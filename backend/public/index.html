@@ -83,6 +83,8 @@
     .btn-danger:hover { background: #dc2626; }
     .btn-export { background: #059669; color: #fff; }
     .btn-export:hover { background: #10b981; }
+    .btn-csv { background: #2563eb; color: #fff; }
+    .btn-csv:hover { background: #3b82f6; }
     .btn-del-row {
       padding: 4px 10px; background: transparent; color: var(--red); border: 1px solid var(--red);
       border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all .15s;
@@ -215,6 +217,7 @@
         <span class="info" id="lastUpdated"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportAllPDF()">&#x1F4E5; Export All PDF</button>
+          <button class="btn btn-csv" onclick="exportAllCSV()">&#x1F4C4; Export All CSV</button>
           <button class="btn btn-primary" onclick="refreshAll()">Refresh</button>
         </div>
       </div>
@@ -231,6 +234,7 @@
         <span class="info" id="calls-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('call_logs')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('call_logs')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('call_logs', loadCallLogs)">Delete All</button>
           <button class="btn btn-primary" onclick="loadCallLogs()">Refresh</button>
         </div>
@@ -245,6 +249,7 @@
         <span class="info" id="sms-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('sms')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('sms')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('sms', loadSms)">Delete All</button>
           <button class="btn btn-primary" onclick="loadSms()">Refresh</button>
         </div>
@@ -260,6 +265,7 @@
         <span class="info" id="loc-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('location')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('location')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('location', loadLocation)">Delete All</button>
           <button class="btn btn-primary" onclick="loadLocation()">Refresh</button>
         </div>
@@ -274,6 +280,7 @@
         <span class="info" id="sim-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('sim_history')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('sim_history')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('sim_history', loadSimHistory)">Delete All</button>
           <button class="btn btn-primary" onclick="loadSimHistory()">Refresh</button>
         </div>
@@ -326,6 +333,7 @@
         <span class="info" id="mfs-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('mobile_money')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('mobile_money')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('mobile_money', loadMobileMoney)">Delete All</button>
           <button class="btn btn-primary" onclick="loadMobileMoney()">Refresh</button>
         </div>
@@ -367,6 +375,7 @@
         <span class="info" id="telecom-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('telecom_usage')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('telecom_usage')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('telecom_usage', loadTelecomUsage)">Delete All</button>
           <button class="btn btn-primary" onclick="loadTelecomUsage()">Refresh</button>
         </div>
@@ -405,6 +414,7 @@
         <span class="info" id="rides-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('ride_hailing')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('ride_hailing')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('ride_hailing', loadRideHailing)">Delete All</button>
           <button class="btn btn-primary" onclick="loadRideHailing()">Refresh</button>
         </div>
@@ -419,6 +429,7 @@
         <span class="info" id="devinfo-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('device_info')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('device_info')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('device_info', loadDeviceInfo)">Delete All</button>
           <button class="btn btn-primary" onclick="loadDeviceInfo()">Refresh</button>
         </div>
@@ -433,6 +444,7 @@
         <span class="info" id="dwell-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('location_dwell')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('location_dwell')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('location_dwell', loadLocationDwell)">Delete All</button>
           <button class="btn btn-primary" onclick="loadLocationDwell()">Refresh</button>
         </div>
@@ -447,6 +459,7 @@
         <span class="info" id="behavior-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('behavior_scores')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('behavior_scores')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('behavior_scores', loadBehaviorScores)">Delete All</button>
           <button class="btn btn-primary" onclick="loadBehaviorScores()">Refresh</button>
         </div>
@@ -461,6 +474,7 @@
         <span class="info" id="apps-count"></span>
         <div class="btn-group">
           <button class="btn btn-export" onclick="exportPDF('installed_apps')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-csv" onclick="exportCSV('installed_apps')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('installed_apps', loadInstalledApps)">Delete All</button>
           <button class="btn btn-primary" onclick="loadInstalledApps()">Refresh</button>
         </div>
@@ -1308,6 +1322,73 @@
         console.error('Full PDF Export error:', e);
         alert('Export failed: ' + e.message);
       }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       CSV Export Functions
+       ═══════════════════════════════════════════════════════════════════ */
+
+    function csvEscape(val) {
+      const str = String(val == null ? '' : val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    }
+
+    function downloadCSV(filename, columns, rows) {
+      const header = columns.map(csvEscape).join(',');
+      const body = rows.map(row => row.map(csvEscape).join(',')).join('\n');
+      const csvContent = '\uFEFF' + header + '\n' + body; // BOM for Excel UTF-8
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function exportCSV(type) {
+      const config = pdfConfig[type];
+      if (!config) return alert('Unknown export type: ' + type);
+
+      try {
+        const res = await apiGet(config.endpoint);
+        const data = res.data || [];
+        if (data.length === 0) return alert('No data to export.');
+
+        const rows = data.map(config.mapRow);
+        downloadCSV(type + '_export_' + new Date().toISOString().slice(0,10) + '.csv', config.columns, rows);
+
+      } catch (e) {
+        console.error('CSV Export error:', e);
+        alert('Export failed: ' + e.message);
+      }
+    }
+
+    async function exportAllCSV() {
+      const types = Object.keys(pdfConfig);
+      let exported = 0;
+
+      for (const type of types) {
+        const config = pdfConfig[type];
+        try {
+          const res = await apiGet(config.endpoint);
+          const data = res.data || [];
+          if (data.length === 0) continue;
+
+          const rows = data.map(config.mapRow);
+          downloadCSV(type + '_export_' + new Date().toISOString().slice(0,10) + '.csv', config.columns, rows);
+          exported++;
+          // Small delay so browser doesn't block multiple downloads
+          await new Promise(r => setTimeout(r, 500));
+        } catch (e) { console.error('CSV export error for ' + type + ':', e); }
+      }
+
+      if (exported === 0) alert('No data to export.');
     }
   </script>
 
