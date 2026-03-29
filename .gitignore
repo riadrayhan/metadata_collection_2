@@ -1,0 +1,14 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+backend/data.json
+android/app/build/
+android/.gradle/
+android/local.properties
+*.iml
+.idea/
+.DS_Store
+Thumbs.db
+.netlify
+.vercel

@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Collector — Admin Panel</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0e1a;
+      --bg2: #111827;
+      --card: #1f2937;
+      --border: #374151;
+      --accent: #6366f1;
+      --accent-l: #818cf8;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --radius: 10px;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+    a { color: var(--accent-l); text-decoration: none; }
+
+    /* ── Sidebar ─────────────────────────── */
+    .sidebar {
+      width: 220px; height: 100vh; position: sticky; top: 0; background: var(--bg2);
+      border-right: 1px solid var(--border); padding: 24px 0; flex-shrink: 0;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sidebar .logo { padding: 0 20px 24px; font-size: 18px; font-weight: 700; color: var(--accent-l); border-bottom: 1px solid var(--border); margin-bottom: 12px; flex-shrink: 0; }
+    .sidebar nav {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+    }
+    .sidebar nav::-webkit-scrollbar { width: 4px; }
+    .sidebar nav::-webkit-scrollbar-track { background: transparent; }
+    .sidebar nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .sidebar nav::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+    .sidebar nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 20px; color: var(--muted); font-size: 14px; transition: all .15s;
+    }
+    .sidebar nav a:hover, .sidebar nav a.active { background: rgba(99,102,241,.12); color: var(--text); border-right: 3px solid var(--accent); }
+    .sidebar nav a .icon { font-size: 18px; width: 24px; text-align: center; }
+
+    .sidebar .bottom { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .sidebar .bottom .device-filter select {
+      width: 100%; padding: 8px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
+    }
+    .sidebar .bottom label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 6px; }
+
+    /* ── Main ─────────────────────────────── */
+    .main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+    .main h2 { font-size: 22px; margin-bottom: 20px; }
+
+    /* ── Cards ────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .card .value { font-size: 28px; font-weight: 700; }
+    .card.calls .value { color: var(--blue); }
+    .card.sms .value { color: var(--green); }
+    .card.loc .value { color: var(--yellow); }
+    .card.sim .value { color: var(--red); }
+    .card.devices .value { color: var(--accent-l); }
+
+    /* ── Toolbar ──────────────────────────── */
+    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .toolbar .info { font-size: 13px; color: var(--muted); }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 600; transition: all .15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-l); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-export { background: #059669; color: #fff; }
+    .btn-export:hover { background: #10b981; }
+    .btn-del-row {
+      padding: 4px 10px; background: transparent; color: var(--red); border: 1px solid var(--red);
+      border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all .15s;
+    }
+    .btn-del-row:hover { background: var(--red); color: #fff; }
+    .toolbar .btn-group { display: flex; gap: 8px; }
+
+    /* ── Tables ───────────────────────────── */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: var(--bg2); }
+    th { padding: 12px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); white-space: nowrap; }
+    td { padding: 10px 14px; border-top: 1px solid var(--border); white-space: nowrap; }
+    tr:hover td { background: rgba(99,102,241,.06); }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-in { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-out { background: rgba(59,130,246,.15); color: var(--blue); }
+    .badge-miss { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge-rej { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .badge-sent { background: rgba(59,130,246,.15); color: var(--blue); }
+    .badge-recv { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-draft { background: rgba(156,163,175,.15); color: var(--muted); }
+
+    .sms-body { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Map ──────────────────────────────── */
+    #map { height: 360px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border); }
+
+    /* ── Tab content ─────────────────────── */
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    /* ── Filters ──────────────────────────── */
+    .filter-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 16px;
+    }
+    .filter-bar label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .filter-bar select, .filter-bar input[type="date"], .filter-bar input[type="month"] {
+      padding: 6px 10px; background: var(--bg2); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; font-size: 13px; font-family: inherit;
+    }
+    .filter-bar input[type="date"]::-webkit-calendar-picker-indicator,
+    .filter-bar input[type="month"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
+    .filter-bar .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-bar .btn-sm {
+      padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 600; transition: all .15s;
+    }
+    .filter-bar .btn-apply { background: var(--accent); color: #fff; }
+    .filter-bar .btn-apply:hover { background: var(--accent-l); }
+    .filter-bar .btn-clear { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .filter-bar .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ── Empty state ─────────────────────── */
+    .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+    .empty .icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* ── Loading ──────────────────────────── */
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ───────────────────────── */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; min-height: auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 0; }
+      .sidebar .logo { display: none; }
+      .sidebar nav { display: flex; }
+      .sidebar nav a { white-space: nowrap; border-right: none !important; }
+      .sidebar nav a.active { border-bottom: 3px solid var(--accent); }
+      .sidebar .bottom { display: none; }
+      .main { padding: 16px; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">Data Collector</div>
+    <nav>
+      <a href="#" data-tab="dashboard" class="active"><span class="icon">&#x1F4CA;</span> Dashboard</a>
+      <a href="#" data-tab="calls"><span class="icon">&#x1F4DE;</span> Call Logs</a>
+      <a href="#" data-tab="sms"><span class="icon">&#x1F4AC;</span> SMS</a>
+      <a href="#" data-tab="location"><span class="icon">&#x1F4CD;</span> Location</a>
+      <a href="#" data-tab="sim"><span class="icon">&#x1F4F1;</span> SIM History</a>
+      <a href="#" data-tab="mobilemoney"><span class="icon">&#x1F4B0;</span> bKash/Nagad</a>
+      <a href="#" data-tab="telecom"><span class="icon">&#x1F4F6;</span> Telecom</a>
+      <a href="#" data-tab="rides"><span class="icon">&#x1F697;</span> Uber/Pathao</a>
+      <a href="#" data-tab="deviceinfo"><span class="icon">&#x1F4F1;</span> Device Info</a>
+      <a href="#" data-tab="dwell"><span class="icon">&#x23F1;</span> Dwell Time</a>
+      <a href="#" data-tab="behavior"><span class="icon">&#x1F9E0;</span> Behavior</a>
+      <a href="#" data-tab="apps"><span class="icon">&#x1F4E6;</span> Apps</a>
+    </nav>
+    <div class="bottom">
+      <div class="device-filter">
+        <label>Filter by Device</label>
+        <select id="deviceFilter" onchange="onDeviceFilterChange()">
+          <option value="">All Devices</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- Dashboard -->
+    <div class="tab active" id="tab-dashboard">
+      <h2>Dashboard</h2>
+      <div class="cards" id="summaryCards">
+        <div class="card calls"><span class="label">Call Logs</span><span class="value" id="stat-calls">—</span></div>
+        <div class="card sms"><span class="label">SMS Messages</span><span class="value" id="stat-sms">—</span></div>
+        <div class="card loc"><span class="label">Locations</span><span class="value" id="stat-loc">—</span></div>
+        <div class="card sim"><span class="label">SIM Changes</span><span class="value" id="stat-sim">—</span></div>
+        <div class="card" style=""><span class="label">bKash/Nagad Txns</span><span class="value" id="stat-mfs" style="color:#10b981">—</span></div>
+        <div class="card" style=""><span class="label">Telecom Recharges</span><span class="value" id="stat-telecom" style="color:#f59e0b">—</span></div>
+        <div class="card" style=""><span class="label">Ride Trips</span><span class="value" id="stat-rides" style="color:#3b82f6">—</span></div>
+        <div class="card devices"><span class="label">Devices</span><span class="value" id="stat-devices">—</span></div>
+      </div>
+      <div class="toolbar">
+        <span class="info" id="lastUpdated"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportAllPDF()">&#x1F4E5; Export All PDF</button>
+          <button class="btn btn-primary" onclick="refreshAll()">Refresh</button>
+        </div>
+      </div>
+      <h2 style="font-size:16px;margin-bottom:12px">Recent Call Logs</h2>
+      <div class="table-wrap" id="dash-calls-table"></div>
+      <h2 style="font-size:16px;margin:20px 0 12px">Recent SMS</h2>
+      <div class="table-wrap" id="dash-sms-table"></div>
+    </div>
+
+    <!-- Call Logs -->
+    <div class="tab" id="tab-calls">
+      <h2>Call Logs</h2>
+      <div class="toolbar">
+        <span class="info" id="calls-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('call_logs')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('call_logs', loadCallLogs)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadCallLogs()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="calls-table"></div>
+    </div>
+
+    <!-- SMS -->
+    <div class="tab" id="tab-sms">
+      <h2>SMS Messages</h2>
+      <div class="toolbar">
+        <span class="info" id="sms-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('sms')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('sms', loadSms)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadSms()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="sms-table"></div>
+    </div>
+
+    <!-- Location -->
+    <div class="tab" id="tab-location">
+      <h2>Location History</h2>
+      <div id="map"></div>
+      <div class="toolbar">
+        <span class="info" id="loc-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('location')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('location', loadLocation)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadLocation()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="loc-table"></div>
+    </div>
+
+    <!-- SIM History -->
+    <div class="tab" id="tab-sim">
+      <h2>SIM Card History</h2>
+      <div class="toolbar">
+        <span class="info" id="sim-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('sim_history')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('sim_history', loadSimHistory)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadSimHistory()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="sim-table"></div>
+    </div>
+
+    <!-- bKash / Nagad Mobile Money -->
+    <div class="tab" id="tab-mobilemoney">
+      <h2>bKash / Nagad Transactions</h2>
+      <div class="filter-bar" id="mfs-filter">
+        <div class="filter-group">
+          <label>Month</label>
+          <input type="month" id="mfs-filter-month" />
+        </div>
+        <div class="filter-group">
+          <label>From</label>
+          <input type="date" id="mfs-filter-from" />
+        </div>
+        <div class="filter-group">
+          <label>To</label>
+          <input type="date" id="mfs-filter-to" />
+        </div>
+        <div class="filter-group">
+          <label>Provider</label>
+          <select id="mfs-filter-provider">
+            <option value="">All</option>
+            <option value="bKash">bKash</option>
+            <option value="Nagad">Nagad</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Type</label>
+          <select id="mfs-filter-type">
+            <option value="">All</option>
+            <option value="CASH_IN">Cash In</option>
+            <option value="CASH_OUT">Cash Out</option>
+            <option value="SEND_MONEY">Send Money</option>
+            <option value="RECEIVE_MONEY">Receive Money</option>
+            <option value="PAYMENT">Payment</option>
+            <option value="BILL_PAY">Bill Pay</option>
+            <option value="MOBILE_RECHARGE">Mobile Recharge</option>
+            <option value="MERCHANT_PAYMENT">Merchant Payment</option>
+          </select>
+        </div>
+        <button class="btn-sm btn-apply" onclick="applyMfsFilter()">Apply</button>
+        <button class="btn-sm btn-clear" onclick="clearMfsFilter()">Clear</button>
+      </div>
+      <div class="toolbar">
+        <span class="info" id="mfs-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('mobile_money')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('mobile_money', loadMobileMoney)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadMobileMoney()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="mfs-table"></div>
+    </div>
+
+    <!-- Telecom Recharge -->
+    <div class="tab" id="tab-telecom">
+      <h2>Telecom Usage & Recharge</h2>
+      <div class="filter-bar" id="telecom-filter">
+        <div class="filter-group">
+          <label>Month</label>
+          <input type="month" id="telecom-filter-month" />
+        </div>
+        <div class="filter-group">
+          <label>From</label>
+          <input type="date" id="telecom-filter-from" />
+        </div>
+        <div class="filter-group">
+          <label>To</label>
+          <input type="date" id="telecom-filter-to" />
+        </div>
+        <div class="filter-group">
+          <label>Operator</label>
+          <select id="telecom-filter-operator">
+            <option value="">All</option>
+            <option value="Grameenphone">Grameenphone</option>
+            <option value="Robi">Robi</option>
+            <option value="Banglalink">Banglalink</option>
+            <option value="Airtel">Airtel</option>
+            <option value="Teletalk">Teletalk</option>
+          </select>
+        </div>
+        <button class="btn-sm btn-apply" onclick="applyTelecomFilter()">Apply</button>
+        <button class="btn-sm btn-clear" onclick="clearTelecomFilter()">Clear</button>
+      </div>
+      <div class="toolbar">
+        <span class="info" id="telecom-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('telecom_usage')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('telecom_usage', loadTelecomUsage)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadTelecomUsage()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="telecom-table"></div>
+    </div>
+
+    <!-- Uber / Pathao Rides -->
+    <div class="tab" id="tab-rides">
+      <h2>Uber / Pathao Rides</h2>
+      <div class="filter-bar" id="rides-filter">
+        <div class="filter-group">
+          <label>Month</label>
+          <input type="month" id="rides-filter-month" />
+        </div>
+        <div class="filter-group">
+          <label>From</label>
+          <input type="date" id="rides-filter-from" />
+        </div>
+        <div class="filter-group">
+          <label>To</label>
+          <input type="date" id="rides-filter-to" />
+        </div>
+        <div class="filter-group">
+          <label>Provider</label>
+          <select id="rides-filter-provider">
+            <option value="">All</option>
+            <option value="Uber">Uber</option>
+            <option value="Pathao">Pathao</option>
+          </select>
+        </div>
+        <button class="btn-sm btn-apply" onclick="applyRidesFilter()">Apply</button>
+        <button class="btn-sm btn-clear" onclick="clearRidesFilter()">Clear</button>
+      </div>
+      <div class="toolbar">
+        <span class="info" id="rides-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('ride_hailing')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('ride_hailing', loadRideHailing)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadRideHailing()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="rides-table"></div>
+    </div>
+
+    <!-- Device Info -->
+    <div class="tab" id="tab-deviceinfo">
+      <h2>Device Information</h2>
+      <div class="toolbar">
+        <span class="info" id="devinfo-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('device_info')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('device_info', loadDeviceInfo)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadDeviceInfo()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="devinfo-table"></div>
+    </div>
+
+    <!-- Location Dwell -->
+    <div class="tab" id="tab-dwell">
+      <h2>Location Dwell Time</h2>
+      <div class="toolbar">
+        <span class="info" id="dwell-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('location_dwell')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('location_dwell', loadLocationDwell)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadLocationDwell()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="dwell-table"></div>
+    </div>
+
+    <!-- Behavior Scores -->
+    <div class="tab" id="tab-behavior">
+      <h2>Behavioral Analysis</h2>
+      <div class="toolbar">
+        <span class="info" id="behavior-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('behavior_scores')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('behavior_scores', loadBehaviorScores)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadBehaviorScores()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="behavior-table"></div>
+    </div>
+
+    <!-- Installed Apps -->
+    <div class="tab" id="tab-apps">
+      <h2>Installed Apps</h2>
+      <div class="toolbar">
+        <span class="info" id="apps-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-export" onclick="exportPDF('installed_apps')">&#x1F4E5; Export PDF</button>
+          <button class="btn btn-danger" onclick="deleteAll('installed_apps', loadInstalledApps)">Delete All</button>
+          <button class="btn btn-primary" onclick="loadInstalledApps()">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="apps-table"></div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    /* ═══════════════════════════════════════════════════════════════════════
+       State
+       ═══════════════════════════════════════════════════════════════════ */
+    let currentDevice = '';
+    let map = null;
+    let markers = [];
+
+    // Auto-load on page ready
+    (function init() {
+      refreshAll();
+    })();
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       API Helper
+       ═══════════════════════════════════════════════════════════════════ */
+    async function apiGet(endpoint) {
+      const sep = endpoint.includes('?') ? '&' : '?';
+      const deviceParam = currentDevice ? sep + 'device_id=' + encodeURIComponent(currentDevice) : '';
+      const res = await fetch(endpoint + deviceParam);
+      if (!res.ok) throw new Error('Request failed: ' + res.status);
+      return res.json();
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Navigation
+       ═══════════════════════════════════════════════════════════════════ */
+    document.querySelectorAll('.sidebar nav a').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.sidebar nav a').forEach((l) => l.classList.remove('active'));
+        link.classList.add('active');
+        const tab = link.dataset.tab;
+        document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        // Load data for tab
+        switch (tab) {
+          case 'dashboard':  loadDashboard(); break;
+          case 'calls':      loadCallLogs(); break;
+          case 'sms':        loadSms(); break;
+          case 'location':   loadLocation(); break;
+          case 'sim':        loadSimHistory(); break;
+          case 'mobilemoney': loadMobileMoney(); break;
+          case 'telecom':    loadTelecomUsage(); break;
+          case 'rides':      loadRideHailing(); break;
+          case 'deviceinfo': loadDeviceInfo(); break;
+          case 'dwell':      loadLocationDwell(); break;
+          case 'behavior':   loadBehaviorScores(); break;
+          case 'apps':       loadInstalledApps(); break;
+        }
+      });
+    });
+
+    function onDeviceFilterChange() {
+      currentDevice = document.getElementById('deviceFilter').value;
+      refreshAll();
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Data Loaders
+       ═══════════════════════════════════════════════════════════════════ */
+
+    async function refreshAll() {
+      loadDashboard();
+      loadCallLogs();
+      loadSms();
+      loadLocation();
+      loadSimHistory();
+      loadMobileMoney();
+      loadTelecomUsage();
+      loadRideHailing();
+      loadDeviceInfo();
+      loadLocationDwell();
+      loadBehaviorScores();
+      loadInstalledApps();
+    }
+
+    async function loadDashboard() {
+      try {
+        const summary = await apiGet('/api/summary');
+        document.getElementById('stat-calls').textContent = summary.total_call_logs.toLocaleString();
+        document.getElementById('stat-sms').textContent = summary.total_sms.toLocaleString();
+        document.getElementById('stat-loc').textContent = summary.total_locations.toLocaleString();
+        document.getElementById('stat-sim').textContent = summary.total_sim_changes.toLocaleString();
+        document.getElementById('stat-mfs').textContent = (summary.total_mobile_money || 0).toLocaleString();
+        document.getElementById('stat-telecom').textContent = (summary.total_telecom_usage || 0).toLocaleString();
+        document.getElementById('stat-rides').textContent = (summary.total_ride_hailing || 0).toLocaleString();
+        document.getElementById('stat-devices').textContent = summary.devices;
+        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+        // Update device filter
+        const select = document.getElementById('deviceFilter');
+        const current = select.value;
+        select.innerHTML = '<option value="">All Devices</option>';
+        (summary.device_ids || []).forEach((d) => {
+          const opt = document.createElement('option');
+          opt.value = d; opt.textContent = d;
+          if (d === current) opt.selected = true;
+          select.appendChild(opt);
+        });
+
+        // Recent calls (5)
+        const calls = await apiGet('/api/data/call_logs?limit=5');
+        document.getElementById('dash-calls-table').innerHTML = buildCallTable(calls.data, false);
+
+        // Recent SMS (5)
+        const sms = await apiGet('/api/data/sms?limit=5');
+        document.getElementById('dash-sms-table').innerHTML = buildSmsTable(sms.data, false);
+
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadCallLogs() {
+      try {
+        const res = await apiGet('/api/data/call_logs?limit=500');
+        document.getElementById('calls-count').textContent = res.count + ' records';
+        document.getElementById('calls-table').innerHTML = res.data.length
+          ? buildCallTable(res.data)
+          : emptyState('No call logs found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadSms() {
+      try {
+        const res = await apiGet('/api/data/sms?limit=500');
+        document.getElementById('sms-count').textContent = res.count + ' records';
+        document.getElementById('sms-table').innerHTML = res.data.length
+          ? buildSmsTable(res.data)
+          : emptyState('No SMS found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadLocation() {
+      try {
+        const res = await apiGet('/api/data/location?limit=300');
+        document.getElementById('loc-count').textContent = res.count + ' records';
+        document.getElementById('loc-table').innerHTML = res.data.length
+          ? buildLocTable(res.data)
+          : emptyState('No location data found');
+        updateMap(res.data);
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadSimHistory() {
+      try {
+        const res = await apiGet('/api/data/sim_history');
+        document.getElementById('sim-count').textContent = res.count + ' records';
+        document.getElementById('sim-table').innerHTML = res.data.length
+          ? buildSimTable(res.data)
+          : emptyState('No SIM change records found');
+      } catch (e) { console.error(e); }
+    }
+
+    // Store raw data for client-side filtering
+    let mfsAllData = [];
+    let telecomAllData = [];
+    let ridesAllData = [];
+
+    async function loadMobileMoney() {
+      try {
+        const res = await apiGet('/api/data/mobile_money?limit=500');
+        mfsAllData = res.data || [];
+        document.getElementById('mfs-count').textContent = res.count + ' records';
+        document.getElementById('mfs-table').innerHTML = mfsAllData.length
+          ? buildMfsTable(mfsAllData)
+          : emptyState('No bKash/Nagad transactions found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadTelecomUsage() {
+      try {
+        const res = await apiGet('/api/data/telecom_usage?limit=500');
+        telecomAllData = res.data || [];
+        document.getElementById('telecom-count').textContent = res.count + ' records';
+        document.getElementById('telecom-table').innerHTML = telecomAllData.length
+          ? buildTelecomTable(telecomAllData)
+          : emptyState('No telecom recharge data found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadRideHailing() {
+      try {
+        const res = await apiGet('/api/data/ride_hailing?limit=200');
+        ridesAllData = res.data || [];
+        document.getElementById('rides-count').textContent = res.count + ' records';
+        document.getElementById('rides-table').innerHTML = ridesAllData.length
+          ? buildRidesTable(ridesAllData)
+          : emptyState('No ride-hailing data found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadDeviceInfo() {
+      try {
+        const res = await apiGet('/api/data/device_info');
+        document.getElementById('devinfo-count').textContent = res.count + ' records';
+        document.getElementById('devinfo-table').innerHTML = res.data.length
+          ? buildDeviceInfoTable(res.data)
+          : emptyState('No device info found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadLocationDwell() {
+      try {
+        const res = await apiGet('/api/data/location_dwell?limit=300');
+        document.getElementById('dwell-count').textContent = res.count + ' records';
+        document.getElementById('dwell-table').innerHTML = res.data.length
+          ? buildDwellTable(res.data)
+          : emptyState('No dwell time data found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadBehaviorScores() {
+      try {
+        const res = await apiGet('/api/data/behavior_scores');
+        document.getElementById('behavior-count').textContent = res.count + ' records';
+        document.getElementById('behavior-table').innerHTML = res.data.length
+          ? buildBehaviorTable(res.data)
+          : emptyState('No behavior analysis data found');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadInstalledApps() {
+      try {
+        const res = await apiGet('/api/data/installed_apps?limit=500');
+        document.getElementById('apps-count').textContent = res.count + ' records';
+        document.getElementById('apps-table').innerHTML = res.data.length
+          ? buildAppsTable(res.data)
+          : emptyState('No installed apps data found');
+      } catch (e) { console.error(e); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Table Builders
+       ═══════════════════════════════════════════════════════════════════ */
+
+    function fmtDate(raw) {
+      if (!raw) return '—';
+      // If millisecond timestamp
+      const num = Number(raw);
+      if (!isNaN(num) && num > 1e12) return new Date(num).toLocaleString();
+      if (!isNaN(num) && num > 1e9) return new Date(num * 1000).toLocaleString();
+      return raw;
+    }
+
+    function fmtDuration(sec) {
+      if (!sec || sec === '0') return '0s';
+      const s = Number(sec);
+      if (s < 60) return s + 's';
+      return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+    }
+
+    function callBadge(type) {
+      const map = { INCOMING: 'badge-in', OUTGOING: 'badge-out', MISSED: 'badge-miss', REJECTED: 'badge-rej' };
+      return '<span class="badge ' + (map[type] || '') + '">' + escHtml(type || 'UNKNOWN') + '</span>';
+    }
+
+    function smsBadge(type) {
+      const map = { SENT: 'badge-sent', RECEIVED: 'badge-recv', DRAFT: 'badge-draft' };
+      return '<span class="badge ' + (map[type] || '') + '">' + escHtml(type || 'OTHER') + '</span>';
+    }
+
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+
+    function buildCallTable(data, showDelete) {
+      let h = '<table><thead><tr><th>Number</th><th>Type</th><th>Date</th><th>Duration</th><th>Device</th>' + (showDelete !== false ? '<th></th>' : '') + '</tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td>' + escHtml(r.number) + '</td><td>' + callBadge(r.type) + '</td><td>' + fmtDate(r.date) + '</td><td>' + fmtDuration(r.duration) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        if (showDelete !== false) h += '<td><button class="btn-del-row" onclick="deleteOne(\'call_logs\',\'' + r._id + '\', loadCallLogs)">Delete</button></td>';
+        h += '</tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildSmsTable(data, showDelete) {
+      let h = '<table><thead><tr><th>Address</th><th>Type</th><th>Body</th><th>Date</th><th>Device</th>' + (showDelete !== false ? '<th></th>' : '') + '</tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td>' + escHtml(r.address) + '</td><td>' + smsBadge(r.type) + '</td><td class="sms-body" title="' + escHtml(r.body) + '">' + escHtml(r.body) + '</td><td>' + fmtDate(r.date) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        if (showDelete !== false) h += '<td><button class="btn-del-row" onclick="deleteOne(\'sms\',\'' + r._id + '\', loadSms)">Delete</button></td>';
+        h += '</tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildLocTable(data) {
+      let h = '<table><thead><tr><th>Address / Place</th><th>Source</th><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Timestamp</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        const addr = r.address || '—';
+        const srcBadge = r.source === 'WIFI' ? '<span class="badge badge-in">WiFi</span>'
+          : r.source === 'CELL_TOWER' ? '<span class="badge badge-sent">Cell Tower</span>'
+          : r.source === 'IP_GEOLOCATION' ? '<span class="badge badge-rej">IP Geo</span>'
+          : r.source === 'GPS' ? '<span class="badge badge-recv">GPS</span>'
+          : '<span class="badge">' + escHtml(r.source || 'N/A') + '</span>';
+        h += '<tr><td>' + escHtml(addr) + '</td><td>' + srcBadge + '</td><td>' + r.latitude + '</td><td>' + r.longitude + '</td><td>' + (r.accuracy ? r.accuracy.toFixed ? r.accuracy.toFixed(0) + 'm' : r.accuracy + 'm' : '—') + '</td><td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'location\',\'' + r._id + '\', loadLocation)">Delete</button></td>';
+        h += '</tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildSimTable(data) {
+      let h = '<table><thead><tr><th>Carrier</th><th>Slot</th><th>State</th><th>Event</th><th>ICCID</th><th>MCC/MNC</th><th>IMSI</th><th>Country</th><th>Timestamp</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        const evBadge = r.event_type === 'CURRENT_SIM' ? '<span class="badge badge-in">ACTIVE</span>'
+          : r.event_type === 'SIM_REMOVED' || r.event_type === 'SIM_STATE_CHANGE' ? '<span class="badge badge-miss">' + escHtml(r.event_type) + '</span>'
+          : r.event_type === 'SIM_LOADED' || r.event_type === 'SIM_READY' ? '<span class="badge badge-sent">' + escHtml(r.event_type) + '</span>'
+          : r.event_type === 'DEFAULT_SUB_CHANGE' ? '<span class="badge badge-rej">' + escHtml(r.event_type) + '</span>'
+          : '<span class="badge">' + escHtml(r.event_type || '—') + '</span>';
+        h += '<tr><td><b>' + escHtml(r.carrier) + '</b></td>';
+        h += '<td>' + (r.sim_slot !== undefined && r.sim_slot !== '' ? 'Slot ' + escHtml(r.sim_slot) : '—') + '</td>';
+        h += '<td>' + escHtml(r.sim_state || '—') + '</td>';
+        h += '<td>' + evBadge + '</td>';
+        h += '<td style="font-size:11px">' + escHtml(r.new_iccid || r.old_iccid || '—') + '</td>';
+        h += '<td>' + (r.mcc ? escHtml(r.mcc) + '/' + escHtml(r.mnc) : '—') + '</td>';
+        h += '<td style="font-size:11px">' + escHtml(r.imsi || '—') + '</td>';
+        h += '<td>' + escHtml(r.country || '—') + '</td>';
+        h += '<td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'sim_history\',\'' + r._id + '\', loadSimHistory)">Delete</button></td>';
+        h += '</tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function emptyState(msg) {
+      return '<div class="empty"><div class="icon">&#x1F4ED;</div><p>' + msg + '</p></div>';
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       New Table Builders — bKash/Nagad, Telecom, Rides, Device, Dwell, Behavior, Apps
+       ═══════════════════════════════════════════════════════════════════ */
+
+    function mfsBadge(type) {
+      const colors = {
+        CASH_IN: 'badge-in', CASH_OUT: 'badge-out', SEND_MONEY: 'badge-sent',
+        RECEIVE_MONEY: 'badge-recv', PAYMENT: 'badge-out', BILL_PAY: 'badge-miss',
+        MERCHANT_PAYMENT: 'badge-out', MOBILE_RECHARGE: 'badge-rej'
+      };
+      return '<span class="badge ' + (colors[type] || '') + '">' + escHtml(type || 'OTHER') + '</span>';
+    }
+
+    function buildMfsTable(data) {
+      let h = '<table><thead><tr><th>Provider</th><th>Type</th><th>Amount</th><th>Balance</th><th>TxnID</th><th>Counter Party</th><th>Date</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td><b>' + escHtml(r.provider) + '</b></td><td>' + mfsBadge(r.txn_type) + '</td><td>৳' + escHtml(r.amount || '—') + '</td><td>৳' + escHtml(r.balance || '—') + '</td><td>' + escHtml(r.txn_id || '—') + '</td><td>' + escHtml(r.counter_party || '—') + '</td><td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'mobile_money\',\'' + r._id + '\', loadMobileMoney)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildTelecomTable(data) {
+      let h = '<table><thead><tr><th>Operator</th><th>Type</th><th>Amount</th><th>Balance</th><th>SMS Body</th><th>Date</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td><b>' + escHtml(r.operator) + '</b></td><td>' + escHtml(r.recharge_type) + '</td><td>৳' + escHtml(r.amount || '—') + '</td><td>৳' + escHtml(r.balance || '—') + '</td><td class="sms-body" title="' + escHtml(r.raw_sms) + '">' + escHtml(r.raw_sms || '—') + '</td><td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'telecom_usage\',\'' + r._id + '\', loadTelecomUsage)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildRidesTable(data) {
+      let h = '<table><thead><tr><th>Provider</th><th>Type</th><th>Amount</th><th>Details</th><th>Date</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td><b>' + escHtml(r.provider) + '</b></td><td>' + escHtml(r.ride_type) + '</td><td>৳' + escHtml(r.amount || '—') + '</td><td class="sms-body" title="' + escHtml(r.trip_details) + '">' + escHtml(r.trip_details || '—') + '</td><td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'ride_hailing\',\'' + r._id + '\', loadRideHailing)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildDeviceInfoTable(data) {
+      let h = '<table><thead><tr><th>Brand/Model</th><th>OS</th><th>Security Patch</th><th>Rooted</th><th>SIM Swaps</th><th>Factory Reset</th><th>Battery</th><th>RAM</th><th>Storage</th><th>Network</th><th>Uptime(days)</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        const rootBadge = r.is_rooted === 'YES' ? '<span class="badge badge-miss">ROOTED</span>' : '<span class="badge badge-in">CLEAN</span>';
+        h += '<tr><td><b>' + escHtml(r.brand) + '</b> ' + escHtml(r.model) + '</td><td>Android ' + escHtml(r.os_version) + ' (API ' + escHtml(r.api_level) + ')</td><td>' + escHtml(r.security_patch || '—') + '</td><td>' + rootBadge + '</td><td>' + escHtml(r.sim_swap_count) + '</td><td>' + escHtml(r.factory_reset_indicator) + '</td><td>' + escHtml(r.battery_info) + '</td><td>' + escHtml(r.ram_info) + '</td><td>' + escHtml(r.storage_info) + '</td><td>' + escHtml(r.network_type) + '</td><td>' + escHtml(r.uptime_days) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'device_info\',\'' + r._id + '\', loadDeviceInfo)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildDwellTable(data) {
+      let h = '<table><thead><tr><th>Address</th><th>Lat</th><th>Lng</th><th>Dwell (min)</th><th>Type</th><th>Visits</th><th>Event</th><th>Time</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td>' + escHtml(r.address || '—') + '</td><td>' + r.latitude + '</td><td>' + r.longitude + '</td><td><b>' + (r.dwell_minutes || 0) + '</b></td><td>' + escHtml(r.location_type) + '</td><td>' + (r.visit_count || 1) + '</td><td>' + escHtml(r.event_type) + '</td><td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'location_dwell\',\'' + r._id + '\', loadLocationDwell)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function buildBehaviorTable(data) {
+      let h = '<table><thead><tr><th>Calls (In/Out/Miss)</th><th>Call Regularity</th><th>In:Out Ratio</th><th>Night Activity</th><th>Avg Duration</th><th>Contacts</th><th>Network Size</th><th>SMS (Sent/Recv)</th><th>MFS Txns/Volume</th><th>Recharges/Amount</th><th>Locations</th><th>Date</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td>' + r.total_calls + ' (' + r.incoming_calls + '/' + r.outgoing_calls + '/' + r.missed_calls + ')</td>';
+        h += '<td>' + escHtml(r.call_regularity) + '</td>';
+        h += '<td>' + escHtml(r.in_out_ratio) + '</td>';
+        h += '<td>' + escHtml(r.night_ratio) + ' (' + r.night_calls + ')</td>';
+        h += '<td>' + escHtml(r.avg_call_duration) + 's</td>';
+        h += '<td>' + r.unique_call_contacts + '</td>';
+        h += '<td>' + r.network_size + '</td>';
+        h += '<td>' + r.total_sms + ' (' + r.sent_sms + '/' + r.received_sms + ')</td>';
+        h += '<td>' + r.total_mfs_txns + ' / ৳' + escHtml(r.total_mfs_volume) + '</td>';
+        h += '<td>' + r.total_recharges + ' / ৳' + escHtml(r.total_recharge_amount) + '</td>';
+        h += '<td>' + r.unique_locations + '</td>';
+        h += '<td>' + escHtml(r.timestamp) + '</td>';
+        h += '<td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'behavior_scores\',\'' + r._id + '\', loadBehaviorScores)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    function appStatusBadge(status) {
+      if (status === 'INSTALLED') return '<span class="badge badge-in">INSTALLED</span>';
+      if (status === 'NOT_INSTALLED') return '<span class="badge badge-miss">NOT FOUND</span>';
+      return '<span class="badge">' + escHtml(status) + '</span>';
+    }
+
+    function buildAppsTable(data) {
+      let h = '<table><thead><tr><th>App</th><th>Package</th><th>Category</th><th>Status</th><th>Version</th><th>Installed</th><th>Last Update</th><th>Device</th><th></th></tr></thead><tbody>';
+      data.forEach((r) => {
+        h += '<tr><td><b>' + escHtml(r.app_name) + '</b></td><td style="font-size:11px">' + escHtml(r.package_name) + '</td><td>' + escHtml(r.category) + '</td><td>' + appStatusBadge(r.status) + '</td><td>' + escHtml(r.version || '—') + '</td><td>' + escHtml(r.install_date || '—') + '</td><td>' + escHtml(r.last_update || '—') + '</td><td>' + escHtml(r.device_id) + '</td>';
+        h += '<td><button class="btn-del-row" onclick="deleteOne(\'installed_apps\',\'' + r._id + '\', loadInstalledApps)">Delete</button></td></tr>';
+      });
+      return h + '</tbody></table>';
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Map
+       ═══════════════════════════════════════════════════════════════════ */
+    function updateMap(data) {
+      if (!map) {
+        map = L.map('map').setView([23.8103, 90.4125], 6); // Default: Bangladesh
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19,
+        }).addTo(map);
+      }
+
+      // Clear old markers
+      markers.forEach((m) => map.removeLayer(m));
+      markers = [];
+
+      if (!data || data.length === 0) return;
+
+      const bounds = [];
+      data.forEach((loc) => {
+        if (loc.latitude && loc.longitude) {
+          const m = L.marker([loc.latitude, loc.longitude]).addTo(map);
+          m.bindPopup(
+            '<b>Location:</b> ' + escHtml(loc.address || 'Unknown') +
+            '<br><b>Device:</b> ' + escHtml(loc.device_id) +
+            '<br><b>Time:</b> ' + escHtml(loc.timestamp) +
+            '<br><b>Accuracy:</b> ' + (loc.accuracy ? loc.accuracy.toFixed(1) + 'm' : '—')
+          );
+          markers.push(m);
+          bounds.push([loc.latitude, loc.longitude]);
+        }
+      });
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+      }
+    }
+
+    // Fix map rendering when tab is shown
+    document.querySelector('[data-tab="location"]').addEventListener('click', () => {
+      setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+    });
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Delete Functions
+       ═══════════════════════════════════════════════════════════════════ */
+    async function deleteOne(type, id, reloadFn) {
+      if (!confirm('Delete this record?')) return;
+      try {
+        const res = await fetch('/api/delete?type=' + type + '&id=' + encodeURIComponent(id), { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          reloadFn();
+          loadDashboard();
+        } else {
+          alert('Delete failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Delete error: ' + e.message);
+      }
+    }
+
+    async function deleteAll(type, reloadFn) {
+      const labels = {
+        call_logs: 'call logs', sms: 'SMS messages', location: 'location records',
+        sim_history: 'SIM history records', mobile_money: 'bKash/Nagad transactions',
+        telecom_usage: 'telecom recharge records', ride_hailing: 'ride-hailing records',
+        device_info: 'device info records', location_dwell: 'dwell time records',
+        behavior_scores: 'behavior analysis records', installed_apps: 'installed apps records'
+      };
+      const label = labels[type] || type;
+      const deviceNote = currentDevice ? ' for device ' + currentDevice : '';
+      if (!confirm('Delete ALL ' + label + deviceNote + '? This cannot be undone.')) return;
+      try {
+        let url = '/api/delete?type=' + type;
+        if (currentDevice) url += '&device_id=' + encodeURIComponent(currentDevice);
+        const res = await fetch(url, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.deleted + ' ' + label + ' deleted.');
+          reloadFn();
+          loadDashboard();
+        } else {
+          alert('Delete failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Delete error: ' + e.message);
+      }
+    }
+    /* ═══════════════════════════════════════════════════════════════════════
+       Filter Helpers
+       ═══════════════════════════════════════════════════════════════════ */
+
+    function parseRecordDate(raw) {
+      if (!raw) return null;
+      const num = Number(raw);
+      if (!isNaN(num) && num > 1e12) return new Date(num);
+      if (!isNaN(num) && num > 1e9) return new Date(num * 1000);
+      const d = new Date(raw);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function filterByDateRange(data, tsField, monthVal, fromVal, toVal) {
+      return data.filter(r => {
+        const d = parseRecordDate(r[tsField]);
+        if (!d) return true;
+        if (monthVal) {
+          const [y, m] = monthVal.split('-').map(Number);
+          if (d.getFullYear() !== y || (d.getMonth() + 1) !== m) return false;
+        }
+        if (fromVal) {
+          const from = new Date(fromVal + 'T00:00:00');
+          if (d < from) return false;
+        }
+        if (toVal) {
+          const to = new Date(toVal + 'T23:59:59');
+          if (d > to) return false;
+        }
+        return true;
+      });
+    }
+
+    /* ── bKash/Nagad Filters ─────────────────────────── */
+    function applyMfsFilter() {
+      const month = document.getElementById('mfs-filter-month').value;
+      const from = document.getElementById('mfs-filter-from').value;
+      const to = document.getElementById('mfs-filter-to').value;
+      const provider = document.getElementById('mfs-filter-provider').value;
+      const txnType = document.getElementById('mfs-filter-type').value;
+
+      let filtered = filterByDateRange(mfsAllData, 'timestamp', month, from, to);
+      if (provider) filtered = filtered.filter(r => (r.provider || '').toLowerCase().includes(provider.toLowerCase()));
+      if (txnType) filtered = filtered.filter(r => r.txn_type === txnType);
+
+      document.getElementById('mfs-count').textContent = filtered.length + ' of ' + mfsAllData.length + ' records (filtered)';
+      document.getElementById('mfs-table').innerHTML = filtered.length
+        ? buildMfsTable(filtered)
+        : emptyState('No transactions match the filter');
+    }
+
+    function clearMfsFilter() {
+      document.getElementById('mfs-filter-month').value = '';
+      document.getElementById('mfs-filter-from').value = '';
+      document.getElementById('mfs-filter-to').value = '';
+      document.getElementById('mfs-filter-provider').value = '';
+      document.getElementById('mfs-filter-type').value = '';
+      document.getElementById('mfs-count').textContent = mfsAllData.length + ' records';
+      document.getElementById('mfs-table').innerHTML = mfsAllData.length
+        ? buildMfsTable(mfsAllData)
+        : emptyState('No bKash/Nagad transactions found');
+    }
+
+    /* ── Telecom Filters ─────────────────────────── */
+    function applyTelecomFilter() {
+      const month = document.getElementById('telecom-filter-month').value;
+      const from = document.getElementById('telecom-filter-from').value;
+      const to = document.getElementById('telecom-filter-to').value;
+      const operator = document.getElementById('telecom-filter-operator').value;
+
+      let filtered = filterByDateRange(telecomAllData, 'timestamp', month, from, to);
+      if (operator) filtered = filtered.filter(r => (r.operator || '').toLowerCase().includes(operator.toLowerCase()));
+
+      document.getElementById('telecom-count').textContent = filtered.length + ' of ' + telecomAllData.length + ' records (filtered)';
+      document.getElementById('telecom-table').innerHTML = filtered.length
+        ? buildTelecomTable(filtered)
+        : emptyState('No telecom records match the filter');
+    }
+
+    function clearTelecomFilter() {
+      document.getElementById('telecom-filter-month').value = '';
+      document.getElementById('telecom-filter-from').value = '';
+      document.getElementById('telecom-filter-to').value = '';
+      document.getElementById('telecom-filter-operator').value = '';
+      document.getElementById('telecom-count').textContent = telecomAllData.length + ' records';
+      document.getElementById('telecom-table').innerHTML = telecomAllData.length
+        ? buildTelecomTable(telecomAllData)
+        : emptyState('No telecom recharge data found');
+    }
+
+    /* ── Uber/Pathao Filters ─────────────────────────── */
+    function applyRidesFilter() {
+      const month = document.getElementById('rides-filter-month').value;
+      const from = document.getElementById('rides-filter-from').value;
+      const to = document.getElementById('rides-filter-to').value;
+      const provider = document.getElementById('rides-filter-provider').value;
+
+      let filtered = filterByDateRange(ridesAllData, 'timestamp', month, from, to);
+      if (provider) filtered = filtered.filter(r => (r.provider || '').toLowerCase().includes(provider.toLowerCase()));
+
+      document.getElementById('rides-count').textContent = filtered.length + ' of ' + ridesAllData.length + ' records (filtered)';
+      document.getElementById('rides-table').innerHTML = filtered.length
+        ? buildRidesTable(filtered)
+        : emptyState('No ride records match the filter');
+    }
+
+    function clearRidesFilter() {
+      document.getElementById('rides-filter-month').value = '';
+      document.getElementById('rides-filter-from').value = '';
+      document.getElementById('rides-filter-to').value = '';
+      document.getElementById('rides-filter-provider').value = '';
+      document.getElementById('rides-count').textContent = ridesAllData.length + ' records';
+      document.getElementById('rides-table').innerHTML = ridesAllData.length
+        ? buildRidesTable(ridesAllData)
+        : emptyState('No ride-hailing data found');
+    }
+
+    // When month filter changes, auto-clear date range (and vice versa)
+    ['mfs', 'telecom', 'rides'].forEach(prefix => {
+      const monthEl = document.getElementById(prefix + '-filter-month');
+      const fromEl = document.getElementById(prefix + '-filter-from');
+      const toEl = document.getElementById(prefix + '-filter-to');
+      if (monthEl) monthEl.addEventListener('change', () => { fromEl.value = ''; toEl.value = ''; });
+      if (fromEl) fromEl.addEventListener('change', () => { monthEl.value = ''; });
+      if (toEl) toEl.addEventListener('change', () => { monthEl.value = ''; });
+    });
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       PDF Export Functions
+       ═══════════════════════════════════════════════════════════════════ */
+
+    const pdfConfig = {
+      call_logs: {
+        title: 'Call Logs Report',
+        endpoint: '/api/data/call_logs?limit=99999',
+        columns: ['Number', 'Type', 'Date', 'Duration(s)', 'Device'],
+        mapRow: r => [r.number||'', r.type||'', fmtDate(r.date), r.duration||'0', r.device_id||'']
+      },
+      sms: {
+        title: 'SMS Messages Report',
+        endpoint: '/api/data/sms?limit=99999',
+        columns: ['Address', 'Type', 'Body', 'Date', 'Device'],
+        mapRow: r => [r.address||'', r.type||'', (r.body||'').substring(0,80), fmtDate(r.date), r.device_id||'']
+      },
+      location: {
+        title: 'Location History Report',
+        endpoint: '/api/data/location?limit=99999',
+        columns: ['Address', 'Source', 'Latitude', 'Longitude', 'Accuracy', 'Timestamp', 'Device'],
+        mapRow: r => [r.address||'—', r.source||'', r.latitude||'', r.longitude||'', r.accuracy?r.accuracy+'m':'—', r.timestamp||'', r.device_id||'']
+      },
+      sim_history: {
+        title: 'SIM Card History Report',
+        endpoint: '/api/data/sim_history',
+        columns: ['Carrier', 'Slot', 'State', 'Event', 'ICCID', 'MCC/MNC', 'Country', 'Timestamp', 'Device'],
+        mapRow: r => [r.carrier||'', r.sim_slot!==undefined?'Slot '+r.sim_slot:'—', r.sim_state||'—', r.event_type||'', r.new_iccid||r.old_iccid||'—', r.mcc?r.mcc+'/'+r.mnc:'—', r.country||'—', r.timestamp||'', r.device_id||'']
+      },
+      mobile_money: {
+        title: 'bKash/Nagad Transactions Report',
+        endpoint: '/api/data/mobile_money?limit=99999',
+        columns: ['Provider', 'Type', 'Amount', 'Balance', 'TxnID', 'Counter Party', 'Date', 'Device'],
+        mapRow: r => [r.provider||'', r.txn_type||'', r.amount||'—', r.balance||'—', r.txn_id||'—', r.counter_party||'—', r.timestamp||'', r.device_id||'']
+      },
+      telecom_usage: {
+        title: 'Telecom Usage & Recharge Report',
+        endpoint: '/api/data/telecom_usage?limit=99999',
+        columns: ['Operator', 'Type', 'Amount', 'Balance', 'SMS Body', 'Date', 'Device'],
+        mapRow: r => [r.operator||'', r.recharge_type||'', r.amount||'—', r.balance||'—', (r.raw_sms||'—').substring(0,60), r.timestamp||'', r.device_id||'']
+      },
+      ride_hailing: {
+        title: 'Uber/Pathao Rides Report',
+        endpoint: '/api/data/ride_hailing?limit=99999',
+        columns: ['Provider', 'Type', 'Amount', 'Details', 'Date', 'Device'],
+        mapRow: r => [r.provider||'', r.ride_type||'', r.amount||'—', (r.trip_details||'—').substring(0,60), r.timestamp||'', r.device_id||'']
+      },
+      device_info: {
+        title: 'Device Information Report',
+        endpoint: '/api/data/device_info',
+        columns: ['Brand', 'Model', 'OS', 'Rooted', 'SIM Swaps', 'Battery', 'Network', 'Device'],
+        mapRow: r => [r.brand||'', r.model||'', 'Android '+(r.os_version||''), r.is_rooted||'', r.sim_swap_count||'', r.battery_info||'', r.network_type||'', r.device_id||'']
+      },
+      location_dwell: {
+        title: 'Location Dwell Time Report',
+        endpoint: '/api/data/location_dwell?limit=99999',
+        columns: ['Address', 'Lat', 'Lng', 'Dwell(min)', 'Type', 'Visits', 'Event', 'Time', 'Device'],
+        mapRow: r => [r.address||'—', r.latitude||'', r.longitude||'', r.dwell_minutes||0, r.location_type||'', r.visit_count||1, r.event_type||'', r.timestamp||'', r.device_id||'']
+      },
+      behavior_scores: {
+        title: 'Behavioral Analysis Report',
+        endpoint: '/api/data/behavior_scores',
+        columns: ['Total Calls', 'In/Out/Miss', 'Regularity', 'Night%', 'Avg Duration', 'Contacts', 'SMS', 'MFS Txns', 'Locations', 'Date', 'Device'],
+        mapRow: r => [r.total_calls||0, (r.incoming_calls||0)+'/'+(r.outgoing_calls||0)+'/'+(r.missed_calls||0), r.call_regularity||'', r.night_ratio||'', (r.avg_call_duration||0)+'s', r.unique_call_contacts||0, r.total_sms||0, r.total_mfs_txns||0, r.unique_locations||0, r.timestamp||'', r.device_id||'']
+      },
+      installed_apps: {
+        title: 'Installed Apps Report',
+        endpoint: '/api/data/installed_apps?limit=99999',
+        columns: ['App Name', 'Package', 'Category', 'Status', 'Version', 'Installed', 'Last Update', 'Device'],
+        mapRow: r => [r.app_name||'', r.package_name||'', r.category||'', r.status||'', r.version||'—', r.install_date||'—', r.last_update||'—', r.device_id||'']
+      }
+    };
+
+    async function exportPDF(type) {
+      const config = pdfConfig[type];
+      if (!config) return alert('Unknown export type: ' + type);
+
+      try {
+        const res = await apiGet(config.endpoint);
+        const data = res.data || [];
+        if (data.length === 0) return alert('No data to export.');
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+        // Header
+        doc.setFontSize(18);
+        doc.setTextColor(99, 102, 241);
+        doc.text('Data Collector', 14, 15);
+        doc.setFontSize(14);
+        doc.setTextColor(40, 40, 40);
+        doc.text(config.title, 14, 24);
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        doc.text('Generated: ' + new Date().toLocaleString() + '   |   Records: ' + data.length + (currentDevice ? '   |   Device: ' + currentDevice : ''), 14, 30);
+
+        // Table
+        const rows = data.map(config.mapRow);
+        doc.autoTable({
+          head: [config.columns],
+          body: rows,
+          startY: 35,
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 2 },
+          headStyles: { fillColor: [99, 102, 241], textColor: 255, fontSize: 7, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [245, 245, 250] },
+          margin: { left: 10, right: 10 }
+        });
+
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFontSize(8);
+          doc.setTextColor(150);
+          doc.text('Page ' + i + ' of ' + pageCount, doc.internal.pageSize.getWidth() - 30, doc.internal.pageSize.getHeight() - 8);
+        }
+
+        doc.save(type + '_report_' + new Date().toISOString().slice(0,10) + '.pdf');
+
+      } catch (e) {
+        console.error('PDF Export error:', e);
+        alert('Export failed: ' + e.message);
+      }
+    }
+
+    async function exportAllPDF() {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+        // Title page
+        doc.setFontSize(28);
+        doc.setTextColor(99, 102, 241);
+        doc.text('Data Collector', 14, 40);
+        doc.setFontSize(18);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Complete Data Export Report', 14, 55);
+        doc.setFontSize(11);
+        doc.setTextColor(120, 120, 120);
+        doc.text('Generated: ' + new Date().toLocaleString(), 14, 68);
+        if (currentDevice) doc.text('Device Filter: ' + currentDevice, 14, 76);
+
+        const types = Object.keys(pdfConfig);
+        for (let i = 0; i < types.length; i++) {
+          const type = types[i];
+          const config = pdfConfig[type];
+
+          let data = [];
+          try {
+            const res = await apiGet(config.endpoint);
+            data = res.data || [];
+          } catch (e) { continue; }
+
+          if (data.length === 0) continue;
+
+          doc.addPage('a4', 'landscape');
+
+          // Section header
+          doc.setFontSize(16);
+          doc.setTextColor(99, 102, 241);
+          doc.text(config.title, 14, 15);
+          doc.setFontSize(9);
+          doc.setTextColor(120, 120, 120);
+          doc.text('Records: ' + data.length, 14, 22);
+
+          const rows = data.map(config.mapRow);
+          doc.autoTable({
+            head: [config.columns],
+            body: rows,
+            startY: 26,
+            theme: 'grid',
+            styles: { fontSize: 6.5, cellPadding: 1.5 },
+            headStyles: { fillColor: [99, 102, 241], textColor: 255, fontSize: 7, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [245, 245, 250] },
+            margin: { left: 10, right: 10 }
+          });
+        }
+
+        // Footer on all pages
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFontSize(8);
+          doc.setTextColor(150);
+          doc.text('Page ' + i + ' of ' + pageCount, doc.internal.pageSize.getWidth() - 30, doc.internal.pageSize.getHeight() - 8);
+        }
+
+        doc.save('complete_data_export_' + new Date().toISOString().slice(0,10) + '.pdf');
+
+      } catch (e) {
+        console.error('Full PDF Export error:', e);
+        alert('Export failed: ' + e.message);
+      }
+    }
+  </script>
+
+</body>
+</html>
