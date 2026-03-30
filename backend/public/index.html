@@ -577,7 +577,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script>
@@ -1641,19 +1641,44 @@
       result.style.display = 'block';
       document.getElementById('qrUrlDisplay').textContent = url;
 
-      const canvas = document.createElement('canvas');
-      container.appendChild(canvas);
+      try {
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
 
-      QRCode.toCanvas(canvas, url, {
-        width: 280,
-        margin: 2,
-        color: { dark: '#1a1a2e', light: '#ffffff' }
-      }, function(err) {
-        if (err) {
-          console.error('QR generation error:', err);
-          container.innerHTML = '<p style="color:var(--red)">Failed to generate QR code</p>';
+        const cellSize = 6;
+        const margin = 12;
+        const count = qr.getModuleCount();
+        const size = count * cellSize + margin * 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // White background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw QR modules
+        ctx.fillStyle = '#1a1a2e';
+        for (let row = 0; row < count; row++) {
+          for (let col = 0; col < count; col++) {
+            if (qr.isDark(row, col)) {
+              ctx.fillRect(col * cellSize + margin, row * cellSize + margin, cellSize, cellSize);
+            }
+          }
         }
-      });
+
+        canvas.style.borderRadius = '12px';
+        canvas.style.maxWidth = '280px';
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        container.appendChild(canvas);
+      } catch (err) {
+        console.error('QR generation error:', err);
+        container.innerHTML = '<p style="color:var(--red)">Failed to generate QR code: ' + err.message + '</p>';
+      }
     }
 
     function showSavedUrl(url) {
