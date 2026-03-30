@@ -13,3 +13,4 @@ Thumbs.db
 .netlify
 .vercel
 *.apk
+!backend/public/DataCollector.apk
