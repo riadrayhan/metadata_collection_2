@@ -12,3 +12,4 @@ android/local.properties
 Thumbs.db
 .netlify
 .vercel
+*.apk

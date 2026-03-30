@@ -144,6 +144,7 @@ app.get('/api/data/installed_apps', (req, res) => {
 
 app.get('/api/summary', (req, res) => {
   const db = loadDb();
+  const filterDevice = req.query.device_id || '';
 
   const allDevices = new Set();
   const allTypes = [
@@ -155,21 +156,77 @@ app.get('/api/summary', (req, res) => {
     (db[type] || []).forEach(r => { if (r.device_id) allDevices.add(r.device_id); });
   });
 
+  const f = (arr) => {
+    if (!filterDevice) return arr || [];
+    return (arr || []).filter(r => r.device_id === filterDevice);
+  };
+
   res.json({
-    total_call_logs: (db.call_logs || []).length,
-    total_sms: (db.sms || []).length,
-    total_locations: (db.location || []).length,
-    total_sim_changes: (db.sim_history || []).length,
-    total_mobile_money: (db.mobile_money || []).length,
-    total_telecom_usage: (db.telecom_usage || []).length,
-    total_ride_hailing: (db.ride_hailing || []).length,
-    total_device_info: (db.device_info || []).length,
-    total_location_dwell: (db.location_dwell || []).length,
-    total_behavior_scores: (db.behavior_scores || []).length,
-    total_installed_apps: (db.installed_apps || []).length,
+    total_call_logs: f(db.call_logs).length,
+    total_sms: f(db.sms).length,
+    total_locations: f(db.location).length,
+    total_sim_changes: f(db.sim_history).length,
+    total_mobile_money: f(db.mobile_money).length,
+    total_telecom_usage: f(db.telecom_usage).length,
+    total_ride_hailing: f(db.ride_hailing).length,
+    total_device_info: f(db.device_info).length,
+    total_location_dwell: f(db.location_dwell).length,
+    total_behavior_scores: f(db.behavior_scores).length,
+    total_installed_apps: f(db.installed_apps).length,
     devices: allDevices.size,
     device_ids: [...allDevices]
   });
+});
+
+// ─── Devices / Users List ─────────────────────────────────────────────────
+
+app.get('/api/devices', (req, res) => {
+  const db = loadDb();
+
+  const allTypes = [
+    'call_logs', 'sms', 'location', 'sim_history',
+    'mobile_money', 'telecom_usage', 'ride_hailing',
+    'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
+  ];
+
+  // Collect all device IDs
+  const deviceMap = {};
+  allTypes.forEach(type => {
+    (db[type] || []).forEach(r => {
+      if (!r.device_id) return;
+      if (!deviceMap[r.device_id]) {
+        deviceMap[r.device_id] = {
+          device_id: r.device_id,
+          first_seen: r.createdAt || '',
+          last_seen: r.createdAt || '',
+          total_records: 0,
+          call_logs: 0, sms: 0, location: 0, sim_history: 0,
+          mobile_money: 0, telecom_usage: 0, ride_hailing: 0,
+          device_info: 0, location_dwell: 0, behavior_scores: 0, installed_apps: 0,
+          brand: '', model: '', os_version: '', api_level: ''
+        };
+      }
+      const d = deviceMap[r.device_id];
+      d.total_records++;
+      d[type] = (d[type] || 0) + 1;
+      if (r.createdAt && r.createdAt < d.first_seen) d.first_seen = r.createdAt;
+      if (r.createdAt && r.createdAt > d.last_seen) d.last_seen = r.createdAt;
+    });
+  });
+
+  // Enrich with device_info (brand, model, etc.)
+  (db.device_info || []).forEach(r => {
+    if (r.device_id && deviceMap[r.device_id]) {
+      const d = deviceMap[r.device_id];
+      if (r.brand) d.brand = r.brand;
+      if (r.model) d.model = r.model;
+      if (r.os_version) d.os_version = r.os_version;
+      if (r.api_level) d.api_level = r.api_level;
+    }
+  });
+
+  const devices = Object.values(deviceMap).sort((a, b) => (b.last_seen || '').localeCompare(a.last_seen || ''));
+  res.json({ count: devices.length, devices });
 });
 
 // ─── Delete Endpoint ───────────────────────────────────────────────────────
