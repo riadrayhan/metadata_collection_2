@@ -10,8 +10,8 @@ import java.nio.charset.StandardCharsets;
 
 public class DataSyncManager {
 
-    // Server URL — change to your Netlify URL after deploying
-    private static final String SERVER_URL = "https://datacollector-panel.netlify.app/api/collect";
+    // Server URL — Vercel deployment
+    private static final String SERVER_URL = "https://backend-black-six-89.vercel.app/api/collect";
 
     private final Context context;
     private final DatabaseHelper db;

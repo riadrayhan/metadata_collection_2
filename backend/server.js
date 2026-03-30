@@ -11,25 +11,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── JSON File Database ────────────────────────────────────────────────────
 
-const DB_FILE = path.join(__dirname, 'data.json');
+const BUNDLED_DB = path.join(__dirname, 'data.json');
+const TMP_DB = process.env.VERCEL ? '/tmp/data.json' : BUNDLED_DB;
+
+const EMPTY_DB = {
+  call_logs: [], sms: [], location: [], sim_history: [],
+  mobile_money: [], telecom_usage: [], ride_hailing: [],
+  device_info: [], location_dwell: [], behavior_scores: [], installed_apps: []
+};
 
 function loadDb() {
-  if (!fs.existsSync(DB_FILE)) {
-    return {
-      call_logs: [], sms: [], location: [], sim_history: [],
-      mobile_money: [], telecom_usage: [], ride_hailing: [],
-      device_info: [], location_dwell: [], behavior_scores: [], installed_apps: []
-    };
+  // On Vercel: copy bundled data to /tmp on first use
+  if (process.env.VERCEL && !fs.existsSync(TMP_DB) && fs.existsSync(BUNDLED_DB)) {
+    fs.copyFileSync(BUNDLED_DB, TMP_DB);
   }
-  const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  // Ensure new keys exist for backward compatibility
-  const defaults = ['mobile_money','telecom_usage','ride_hailing','device_info','location_dwell','behavior_scores','installed_apps'];
+  const dbPath = fs.existsSync(TMP_DB) ? TMP_DB : BUNDLED_DB;
+  if (!fs.existsSync(dbPath)) return { ...EMPTY_DB };
+  const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+  const defaults = Object.keys(EMPTY_DB);
   defaults.forEach(k => { if (!data[k]) data[k] = []; });
   return data;
 }
 
 function saveDb(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+  fs.writeFileSync(TMP_DB, JSON.stringify(db, null, 2), 'utf8');
 }
 
 // ─── Collect Endpoint ─────────────────────────────────────────────────────
@@ -42,7 +47,11 @@ app.post('/api/collect', (req, res) => {
       return res.status(400).json({ error: 'Invalid payload' });
     }
 
-    const validTypes = ['call_logs', 'sms', 'location', 'sim_history'];
+    const validTypes = [
+      'call_logs', 'sms', 'location', 'sim_history',
+      'mobile_money', 'telecom_usage', 'ride_hailing',
+      'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
+    ];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: 'Unknown type: ' + type });
     }
