@@ -2,23 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "public/**",
-      "use": "@vercel/static"
-    },
-    {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["public/**"]
+      }
     }
   ],
   "routes": [
-    {
-      "src": "/DataCollector.apk",
-      "dest": "/public/DataCollector.apk",
-      "headers": {
-        "Content-Type": "application/vnd.android.package-archive",
-        "Content-Disposition": "attachment; filename=\"DataCollector.apk\""
-      }
-    },
     {
       "src": "/(.*)",
       "dest": "server.js"
