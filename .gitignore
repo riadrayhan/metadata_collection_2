@@ -13,3 +13,4 @@ Thumbs.db
 .netlify
 .vercel
 *.apk
+!releases/*.apk

@@ -11,7 +11,7 @@ app.use(express.json({ limit: '10mb' }));
 // ─── APK Download (redirect to GitHub) ─────────────────────────────────────
 
 app.get('/DataCollector.apk', (req, res) => {
-  res.redirect('https://github.com/riadrayhan/metadata_collection/raw/main/backend/public/DataCollector.apk');
+  res.redirect('https://github.com/riadrayhan/metadata_collection/raw/main/releases/DataCollector.apk');
 });
 
 express.static.mime.define({ 'application/vnd.android.package-archive': ['apk'] });
