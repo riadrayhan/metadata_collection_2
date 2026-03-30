@@ -7,7 +7,21 @@ const crypto = require('crypto');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+express.static.mime.define({ 'application/vnd.android.package-archive': ['apk'] });
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ─── APK Download ──────────────────────────────────────────────────────────
+
+app.get('/DataCollector.apk', (req, res) => {
+  const apkPath = path.join(__dirname, 'public', 'DataCollector.apk');
+  if (fs.existsSync(apkPath)) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="DataCollector.apk"');
+    fs.createReadStream(apkPath).pipe(res);
+  } else {
+    res.status(404).json({ error: 'APK not found' });
+  }
+});
 
 // ─── JSON File Database ────────────────────────────────────────────────────
 
