@@ -7,14 +7,15 @@ const crypto = require('crypto');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-express.static.mime.define({ 'application/vnd.android.package-archive': ['apk'] });
-app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── APK Download (redirect to GitHub) ─────────────────────────────────────
 
 app.get('/DataCollector.apk', (req, res) => {
   res.redirect('https://github.com/riadrayhan/metadata_collection/raw/main/backend/public/DataCollector.apk');
 });
+
+express.static.mime.define({ 'application/vnd.android.package-archive': ['apk'] });
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── JSON File Database ────────────────────────────────────────────────────
 
