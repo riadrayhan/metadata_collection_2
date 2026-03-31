@@ -827,6 +827,14 @@
         const mfsData = mfsRes.data || [];
         const ridesData = ridesRes.data || [];
 
+        // Show empty state if no data
+        if (mfsData.length === 0 && ridesData.length === 0) {
+          const emptyMsg = '<div class="empty" style="padding:40px 20px"><div class="icon">&#x1F4CA;</div><p>No financial transaction data yet.</p><p style="font-size:12px;margin-top:6px;color:var(--muted)">Charts will appear when bKash/Nagad transactions or Uber/Pathao ride data is synced from a device.</p></div>';
+          document.getElementById('chartTxnByType').parentElement.innerHTML = '<h3>Monthly Transaction Amount by Type</h3>' + emptyMsg;
+          document.getElementById('chartTxnByProvider').parentElement.innerHTML = '<h3>Monthly Transaction Amount by Provider/Service</h3>' + emptyMsg;
+          return;
+        }
+
         // ── Chart 1: Monthly amount by transaction type ──
         const txnTypes = ['CASH_IN', 'CASH_OUT', 'SEND_MONEY', 'RECEIVE_MONEY', 'PAYMENT', 'BILL_PAY'];
         const typeMonthMap = {}; // { 'CASH_IN': { '2026-01': 5000, ... }, ... }
