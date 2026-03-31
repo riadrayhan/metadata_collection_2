@@ -287,12 +287,18 @@
           <button class="btn btn-primary" id="btnAnalyzeSms" onclick="analyzeSms()">&#x1F50D; Analyze SMS Data</button>
         </div>
         <div class="charts-grid">
-          <div class="chart-card">
+          <div class="chart-card" id="chartCard1">
             <h3>Monthly Transaction Amount by Type</h3>
+            <div class="chart-empty-msg" style="display:none;padding:40px 20px;text-align:center;color:var(--muted)">
+              <p>No financial data yet. Click "Analyze SMS Data" to parse transactions.</p>
+            </div>
             <canvas id="chartTxnByType"></canvas>
           </div>
-          <div class="chart-card">
+          <div class="chart-card" id="chartCard2">
             <h3>Monthly Transaction Amount by Provider/Service</h3>
+            <div class="chart-empty-msg" style="display:none;padding:40px 20px;text-align:center;color:var(--muted)">
+              <p>No financial data yet. Click "Analyze SMS Data" to parse transactions.</p>
+            </div>
             <canvas id="chartTxnByProvider"></canvas>
           </div>
         </div>
@@ -820,30 +826,56 @@
       return months[parseInt(m) - 1] + ' ' + y;
     }
 
+    function ensureCanvas(id, parentSelector) {
+      let canvas = document.getElementById(id);
+      if (!canvas) {
+        const parent = document.querySelector(parentSelector);
+        if (parent) {
+          canvas = document.createElement('canvas');
+          canvas.id = id;
+          parent.appendChild(canvas);
+        }
+      }
+      return canvas;
+    }
+
     async function loadDashboardCharts() {
       try {
-        // Fetch mobile_money + ride_hailing data
-        const [mfsRes, ridesRes] = await Promise.all([
+        // Fetch mobile_money + ride_hailing + telecom_usage
+        const [mfsRes, ridesRes, telecomRes] = await Promise.all([
           apiGet('/api/data/mobile_money?limit=99999'),
-          apiGet('/api/data/ride_hailing?limit=99999')
+          apiGet('/api/data/ride_hailing?limit=99999'),
+          apiGet('/api/data/telecom_usage?limit=99999')
         ]);
         const mfsData = mfsRes.data || [];
         const ridesData = ridesRes.data || [];
+        const telecomData = telecomRes.data || [];
 
-        // Show empty state if no data
-        if (mfsData.length === 0 && ridesData.length === 0) {
-          const emptyMsg = '<div class="empty" style="padding:40px 20px"><div class="icon">&#x1F4CA;</div><p>No financial transaction data yet.</p><p style="font-size:12px;margin-top:6px;color:var(--muted)">Charts will appear when bKash/Nagad transactions or Uber/Pathao ride data is synced from a device.</p></div>';
-          document.getElementById('chartTxnByType').parentElement.innerHTML = '<h3>Monthly Transaction Amount by Type</h3>' + emptyMsg;
-          document.getElementById('chartTxnByProvider').parentElement.innerHTML = '<h3>Monthly Transaction Amount by Provider/Service</h3>' + emptyMsg;
+        // Ensure canvas elements exist (recreate if empty state destroyed them)
+        const canvas1 = ensureCanvas('chartTxnByType', '#chartCard1');
+        const canvas2 = ensureCanvas('chartTxnByProvider', '#chartCard2');
+
+        // Show empty state if absolutely no data
+        if (mfsData.length === 0 && ridesData.length === 0 && telecomData.length === 0) {
+          if (canvas1) canvas1.style.display = 'none';
+          if (canvas2) canvas2.style.display = 'none';
+          document.querySelectorAll('.chart-empty-msg').forEach(el => el.style.display = 'block');
           return;
         }
+        // Hide empty messages, show canvases
+        document.querySelectorAll('.chart-empty-msg').forEach(el => el.style.display = 'none');
+        if (canvas1) canvas1.style.display = 'block';
+        if (canvas2) canvas2.style.display = 'block';
 
         // ── Chart 1: Monthly amount by transaction type ──
         const txnTypes = ['CASH_IN', 'CASH_OUT', 'SEND_MONEY', 'RECEIVE_MONEY', 'PAYMENT', 'BILL_PAY'];
-        const typeMonthMap = {}; // { 'CASH_IN': { '2026-01': 5000, ... }, ... }
+        const typeMonthMap = {};
         const allMonths = new Set();
 
         txnTypes.forEach(t => { typeMonthMap[t] = {}; });
+        // Add Rides and Recharge as special types
+        typeMonthMap['RIDES'] = {};
+        typeMonthMap['RECHARGE'] = {};
 
         mfsData.forEach(r => {
           const mk = getMonthKey(r.timestamp);
@@ -855,13 +887,18 @@
           }
         });
 
-        // Also add ride amounts as a type
-        const rideMonthMap = {};
         ridesData.forEach(r => {
           const mk = getMonthKey(r.timestamp);
           if (!mk) return;
           allMonths.add(mk);
-          rideMonthMap[mk] = (rideMonthMap[mk] || 0) + parseFloat(r.amount || 0);
+          typeMonthMap['RIDES'][mk] = (typeMonthMap['RIDES'][mk] || 0) + parseFloat(r.amount || 0);
+        });
+
+        telecomData.forEach(r => {
+          const mk = getMonthKey(r.timestamp);
+          if (!mk) return;
+          allMonths.add(mk);
+          typeMonthMap['RECHARGE'][mk] = (typeMonthMap['RECHARGE'][mk] || 0) + parseFloat(r.amount || 0);
         });
 
         const sortedMonths = Array.from(allMonths).sort();
@@ -869,59 +906,59 @@
 
         const typeColors = {
           CASH_IN: '#10b981', CASH_OUT: '#ef4444', SEND_MONEY: '#3b82f6',
-          RECEIVE_MONEY: '#8b5cf6', PAYMENT: '#f59e0b', BILL_PAY: '#ec4899'
+          RECEIVE_MONEY: '#8b5cf6', PAYMENT: '#f59e0b', BILL_PAY: '#ec4899',
+          RIDES: '#14b8a6', RECHARGE: '#f97316'
         };
         const typeLabels = {
           CASH_IN: 'Cash In', CASH_OUT: 'Cash Out', SEND_MONEY: 'Send Money',
-          RECEIVE_MONEY: 'Receive Money', PAYMENT: 'Payment', BILL_PAY: 'Bill Pay'
+          RECEIVE_MONEY: 'Receive Money', PAYMENT: 'Payment', BILL_PAY: 'Bill Pay',
+          RIDES: 'Rides (Uber/Pathao)', RECHARGE: 'Telecom Recharge'
         };
 
-        const datasets1 = txnTypes.map(t => ({
-          label: typeLabels[t] || t,
-          data: sortedMonths.map(m => Math.round(typeMonthMap[t][m] || 0)),
-          backgroundColor: typeColors[t] || '#6366f1',
-          borderRadius: 4
-        }));
-        // Add rides as separate bar
-        datasets1.push({
-          label: 'Rides (Uber/Pathao)',
-          data: sortedMonths.map(m => Math.round(rideMonthMap[m] || 0)),
-          backgroundColor: '#14b8a6',
-          borderRadius: 4
-        });
+        const allTypes = [...txnTypes, 'RIDES', 'RECHARGE'];
+        // Only include types that have data
+        const datasets1 = allTypes
+          .filter(t => sortedMonths.some(m => (typeMonthMap[t][m] || 0) > 0))
+          .map(t => ({
+            label: typeLabels[t] || t,
+            data: sortedMonths.map(m => Math.round(typeMonthMap[t][m] || 0)),
+            backgroundColor: typeColors[t] || '#6366f1',
+            borderRadius: 4
+          }));
 
-        // Destroy old chart if any
         if (chartTxnByType) chartTxnByType.destroy();
-        const ctx1 = document.getElementById('chartTxnByType').getContext('2d');
-        chartTxnByType = new Chart(ctx1, {
-          type: 'bar',
-          data: { labels: monthLabels, datasets: datasets1 },
-          options: {
-            responsive: true, maintainAspectRatio: true,
-            plugins: {
-              legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx) { return ctx.dataset.label + ': ৳' + ctx.parsed.y.toLocaleString(); }
+        chartTxnByType = null;
+        if (canvas1) {
+          chartTxnByType = new Chart(canvas1.getContext('2d'), {
+            type: 'bar',
+            data: { labels: monthLabels, datasets: datasets1 },
+            options: {
+              responsive: true, maintainAspectRatio: true,
+              plugins: {
+                legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } },
+                tooltip: {
+                  callbacks: {
+                    label: function(ctx) { return ctx.dataset.label + ': ৳' + ctx.parsed.y.toLocaleString(); }
+                  }
+                }
+              },
+              scales: {
+                x: { stacked: false, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: 'rgba(55,65,81,0.3)' } },
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    color: '#9ca3af', font: { size: 11 },
+                    callback: function(v) { return '৳' + v.toLocaleString(); }
+                  },
+                  grid: { color: 'rgba(55,65,81,0.3)' }
                 }
               }
-            },
-            scales: {
-              x: { stacked: false, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: 'rgba(55,65,81,0.3)' } },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  color: '#9ca3af', font: { size: 11 },
-                  callback: function(v) { return '৳' + v.toLocaleString(); }
-                },
-                grid: { color: 'rgba(55,65,81,0.3)' }
-              }
             }
-          }
-        });
+          });
+        }
 
         // ── Chart 2: Monthly amount by provider/service ──
-        const providerMonthMap = {}; // { 'bKash': { '2026-01': 5000 }, ... }
+        const providerMonthMap = {};
 
         mfsData.forEach(r => {
           const mk = getMonthKey(r.timestamp);
@@ -931,7 +968,6 @@
           providerMonthMap[p][mk] = (providerMonthMap[p][mk] || 0) + parseFloat(r.amount || 0);
         });
 
-        // Add ride providers
         ridesData.forEach(r => {
           const mk = getMonthKey(r.timestamp);
           if (!mk) return;
@@ -940,9 +976,19 @@
           providerMonthMap[p][mk] = (providerMonthMap[p][mk] || 0) + parseFloat(r.amount || 0);
         });
 
+        telecomData.forEach(r => {
+          const mk = getMonthKey(r.timestamp);
+          if (!mk) return;
+          const p = r.operator || 'Telecom';
+          if (!providerMonthMap[p]) providerMonthMap[p] = {};
+          providerMonthMap[p][mk] = (providerMonthMap[p][mk] || 0) + parseFloat(r.amount || 0);
+        });
+
         const providerColors = {
           'bKash': '#e2136e', 'Nagad': '#f6921e', 'Uber': '#000000',
-          'Pathao': '#14b8a6', 'Bank': '#3b82f6', 'Unknown': '#6b7280'
+          'Pathao': '#14b8a6', 'Bank': '#3b82f6', 'Grameenphone': '#00a651',
+          'Robi': '#a21c34', 'Banglalink': '#f26522', 'Airtel': '#ed1c24',
+          'Teletalk': '#003e7e', 'Unknown': '#6b7280'
         };
         const defaultColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#2563eb'];
         let ci = 0;
@@ -956,33 +1002,35 @@
         }));
 
         if (chartTxnByProvider) chartTxnByProvider.destroy();
-        const ctx2 = document.getElementById('chartTxnByProvider').getContext('2d');
-        chartTxnByProvider = new Chart(ctx2, {
-          type: 'bar',
-          data: { labels: monthLabels, datasets: datasets2 },
-          options: {
-            responsive: true, maintainAspectRatio: true,
-            plugins: {
-              legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx) { return ctx.dataset.label + ': ৳' + ctx.parsed.y.toLocaleString(); }
+        chartTxnByProvider = null;
+        if (canvas2) {
+          chartTxnByProvider = new Chart(canvas2.getContext('2d'), {
+            type: 'bar',
+            data: { labels: monthLabels, datasets: datasets2 },
+            options: {
+              responsive: true, maintainAspectRatio: true,
+              plugins: {
+                legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } },
+                tooltip: {
+                  callbacks: {
+                    label: function(ctx) { return ctx.dataset.label + ': ৳' + ctx.parsed.y.toLocaleString(); }
+                  }
+                }
+              },
+              scales: {
+                x: { stacked: false, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: 'rgba(55,65,81,0.3)' } },
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    color: '#9ca3af', font: { size: 11 },
+                    callback: function(v) { return '৳' + v.toLocaleString(); }
+                  },
+                  grid: { color: 'rgba(55,65,81,0.3)' }
                 }
               }
-            },
-            scales: {
-              x: { stacked: false, ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { color: 'rgba(55,65,81,0.3)' } },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  color: '#9ca3af', font: { size: 11 },
-                  callback: function(v) { return '৳' + v.toLocaleString(); }
-                },
-                grid: { color: 'rgba(55,65,81,0.3)' }
-              }
             }
-          }
-        });
+          });
+        }
 
       } catch (e) { console.error('Chart load error:', e); }
     }
