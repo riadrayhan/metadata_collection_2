@@ -302,6 +302,205 @@ app.delete('/api/delete', async (req, res) => {
   }
 });
 
+// ─── Server-Side SMS Analyzer ──────────────────────────────────────────────
+
+const AMOUNT_RE = /(?:Tk\.?|BDT|Taka)\s*[:\.]?\s*([\d,]+\.?\d*)/i;
+const BALANCE_RE = /(?:balance|bal|remaining)[:\s]*(?:Tk\.?|BDT)?\s*([\d,]+\.?\d*)/i;
+const TXN_ID_RE = /(?:TrxID|Txn|Transaction\s*(?:ID|No))[:\s]*([A-Za-z0-9]+)/i;
+const PHONE_RE = /01[3-9]\d{8}/;
+
+const BKASH_SENDERS = ['bkash', '16247', '01234016247'];
+const NAGAD_SENDERS = ['nagad', '16167', '01234016167'];
+const UBER_SENDERS = ['uber'];
+const PATHAO_SENDERS = ['pathao'];
+const TELECOM_SENDERS_LIST = ['gp', 'grameenphone', '16800', 'robi', '16222', 'banglalink', '16616', 'airtel', '16746', 'teletalk', '16400'];
+
+function matchSender(addr, senders) {
+  const a = (addr || '').toLowerCase();
+  return senders.some(s => a.includes(s));
+}
+function smsExtractAmount(body) {
+  const m = body.match(AMOUNT_RE);
+  return m ? m[1].replace(/,/g, '') : '';
+}
+function smsExtractBalance(body) {
+  const m = body.match(BALANCE_RE);
+  return m ? m[1].replace(/,/g, '') : '';
+}
+function smsExtractTxnId(body) {
+  const m = body.match(TXN_ID_RE);
+  return m ? m[1] : '';
+}
+function smsExtractPhone(body) {
+  const m = body.match(PHONE_RE);
+  return m ? m[0] : '';
+}
+function detectMfsType(body) {
+  const u = body.toUpperCase();
+  if (u.includes('CASH IN')) return 'CASH_IN';
+  if (u.includes('CASH OUT')) return 'CASH_OUT';
+  if (u.includes('SEND MONEY') || (u.includes('SENT') && (u.includes('TK') || u.includes('BDT')))) return 'SEND_MONEY';
+  if (u.includes('RECEIVED') && (u.includes('TK') || u.includes('BDT'))) return 'RECEIVE_MONEY';
+  if (u.includes('BILL PAY') || u.includes('BILL')) return 'BILL_PAY';
+  if (u.includes('MERCHANT')) return 'MERCHANT_PAYMENT';
+  if (u.includes('PAYMENT') || u.includes('PAY')) return 'PAYMENT';
+  if (u.includes('RECHARGE')) return 'MOBILE_RECHARGE';
+  if (u.includes('ADD MONEY')) return 'ADD_MONEY';
+  if (u.includes('WITHDRAW')) return 'WITHDRAW';
+  return 'OTHER';
+}
+function detectRideType(body) {
+  const u = body.toUpperCase();
+  if (u.includes('COMPLETED') || u.includes('TRIP')) return 'TRIP_COMPLETED';
+  if (u.includes('CANCEL')) return 'CANCELLED';
+  if (u.includes('PROMO') || u.includes('DISCOUNT')) return 'PROMO';
+  if (u.includes('OTP') || u.includes('CODE') || u.includes('VERIFICATION')) return 'VERIFICATION';
+  if (u.includes('FOOD') || u.includes('DELIVERY')) return 'DELIVERY';
+  return 'OTHER';
+}
+function detectOperator(addr, body) {
+  const c = ((addr || '') + ' ' + body).toUpperCase();
+  if (c.includes('GP') || c.includes('GRAMEENPHONE')) return 'Grameenphone';
+  if (c.includes('ROBI')) return 'Robi';
+  if (c.includes('BANGLALINK')) return 'Banglalink';
+  if (c.includes('AIRTEL')) return 'Airtel';
+  if (c.includes('TELETALK')) return 'Teletalk';
+  return 'Unknown';
+}
+function detectRechargeType(body) {
+  const u = body.toUpperCase();
+  if (u.includes('RECHARGE') || u.includes('TOP-UP') || u.includes('TOPUP')) return 'RECHARGE';
+  if (u.includes('BUNDLE') || u.includes('PACK') || u.includes('INTERNET')) return 'BUNDLE_PURCHASE';
+  if (u.includes('BONUS')) return 'BONUS';
+  if (u.includes('EXPIRE')) return 'EXPIRY_NOTICE';
+  if (u.includes('BALANCE')) return 'BALANCE_INFO';
+  return 'OTHER';
+}
+function isTelecomSms(addr, body) {
+  if (matchSender(addr, TELECOM_SENDERS_LIST)) return true;
+  const u = body.toUpperCase();
+  return (u.includes('RECHARGE') || u.includes('TOP-UP') || u.includes('TOPUP') || u.includes('BUNDLE') || u.includes('PACK'))
+    && (u.includes('GP') || u.includes('ROBI') || u.includes('BANGLALINK') || u.includes('AIRTEL') || u.includes('TELETALK'));
+}
+function formatSmsTimestamp(raw) {
+  if (!raw) return '';
+  const num = Number(raw);
+  if (!isNaN(num) && num > 1e12) return new Date(num).toISOString();
+  if (!isNaN(num) && num > 1e9) return new Date(num * 1000).toISOString();
+  return raw;
+}
+
+app.post('/api/analyze-sms', async (req, res) => {
+  try {
+    const filterDevice = req.query.device_id || undefined;
+    const allSms = await queryRecords('sms', { device_id: filterDevice, limit: 99999 });
+
+    let mfsRecords = [];
+    let rideRecords = [];
+    let telecomRecords = [];
+
+    for (const sms of allSms) {
+      const addr = sms.address || '';
+      const body = sms.body || '';
+      const ts = formatSmsTimestamp(sms.date || sms.timestamp || sms.createdAt);
+      const deviceId = sms.device_id || '';
+      const upperBody = body.toUpperCase();
+
+      if (body.length < 10) continue;
+
+      // bKash
+      if (matchSender(addr, BKASH_SENDERS) || upperBody.includes('BKASH')) {
+        if (upperBody.includes('VERIFICATION CODE') || upperBody.includes('OTP')) continue;
+        const amount = smsExtractAmount(body);
+        if (!amount) continue;
+        mfsRecords.push({
+          _id: crypto.randomUUID(), device_id: deviceId, createdAt: new Date().toISOString(),
+          provider: 'bKash', txn_type: detectMfsType(body), amount,
+          balance: smsExtractBalance(body), txn_id: smsExtractTxnId(body),
+          counter_party: smsExtractPhone(body), sender: addr, raw_sms: body, timestamp: ts
+        });
+      }
+      // Nagad
+      else if (matchSender(addr, NAGAD_SENDERS) || upperBody.includes('NAGAD')) {
+        if (upperBody.includes('VERIFICATION CODE') || upperBody.includes('OTP')) continue;
+        const amount = smsExtractAmount(body);
+        if (!amount) continue;
+        mfsRecords.push({
+          _id: crypto.randomUUID(), device_id: deviceId, createdAt: new Date().toISOString(),
+          provider: 'Nagad', txn_type: detectMfsType(body), amount,
+          balance: smsExtractBalance(body), txn_id: smsExtractTxnId(body),
+          counter_party: smsExtractPhone(body), sender: addr, raw_sms: body, timestamp: ts
+        });
+      }
+      // Uber
+      else if (matchSender(addr, UBER_SENDERS) || upperBody.includes('UBER')) {
+        if (upperBody.includes('VERIFICATION CODE') || upperBody.includes('OTP')) continue;
+        rideRecords.push({
+          _id: crypto.randomUUID(), device_id: deviceId, createdAt: new Date().toISOString(),
+          provider: 'Uber', ride_type: detectRideType(body), amount: smsExtractAmount(body),
+          trip_details: body.substring(0, 200), sender: addr, timestamp: ts
+        });
+      }
+      // Pathao
+      else if (matchSender(addr, PATHAO_SENDERS) || upperBody.includes('PATHAO')) {
+        if (upperBody.includes('VERIFICATION CODE') || upperBody.includes('OTP')) continue;
+        rideRecords.push({
+          _id: crypto.randomUUID(), device_id: deviceId, createdAt: new Date().toISOString(),
+          provider: 'Pathao', ride_type: detectRideType(body), amount: smsExtractAmount(body),
+          trip_details: body.substring(0, 200), sender: addr, timestamp: ts
+        });
+      }
+      // Telecom
+      else if (isTelecomSms(addr, body)) {
+        telecomRecords.push({
+          _id: crypto.randomUUID(), device_id: deviceId, createdAt: new Date().toISOString(),
+          operator: detectOperator(addr, body), recharge_type: detectRechargeType(body),
+          amount: smsExtractAmount(body), balance: smsExtractBalance(body),
+          sender: addr, raw_sms: body, timestamp: ts
+        });
+      }
+    }
+
+    const db = await getDatabase();
+    let results = { sms_analyzed: allSms.length, mobile_money: 0, ride_hailing: 0, telecom_usage: 0 };
+
+    if (db) {
+      const delFilter = filterDevice ? { device_id: filterDevice } : {};
+      await db.collection('mobile_money').deleteMany(delFilter);
+      await db.collection('ride_hailing').deleteMany(delFilter);
+      await db.collection('telecom_usage').deleteMany(delFilter);
+
+      if (mfsRecords.length > 0) {
+        await db.collection('mobile_money').insertMany(mfsRecords);
+        results.mobile_money = mfsRecords.length;
+      }
+      if (rideRecords.length > 0) {
+        await db.collection('ride_hailing').insertMany(rideRecords);
+        results.ride_hailing = rideRecords.length;
+      }
+      if (telecomRecords.length > 0) {
+        await db.collection('telecom_usage').insertMany(telecomRecords);
+        results.telecom_usage = telecomRecords.length;
+      }
+    } else {
+      const local = loadLocalDb();
+      local.mobile_money = mfsRecords;
+      local.ride_hailing = rideRecords;
+      local.telecom_usage = telecomRecords;
+      saveLocalDb(local);
+      results.mobile_money = mfsRecords.length;
+      results.ride_hailing = rideRecords.length;
+      results.telecom_usage = telecomRecords.length;
+    }
+
+    console.log(`[analyze-sms] ${allSms.length} SMS -> MFS: ${results.mobile_money}, Rides: ${results.ride_hailing}, Telecom: ${results.telecom_usage}`);
+    res.json({ success: true, ...results });
+  } catch (err) {
+    console.error('Analyze SMS error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Seed: Migrate data.json → MongoDB ────────────────────────────────────
 
 app.post('/api/seed', async (req, res) => {

@@ -282,7 +282,10 @@
       </div>
       <!-- Charts Section -->
       <div class="charts-section">
-        <h2>&#x1F4CA; Monthly Financial Overview</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <h2 style="margin:0">&#x1F4CA; Monthly Financial Overview</h2>
+          <button class="btn btn-primary" id="btnAnalyzeSms" onclick="analyzeSms()">&#x1F50D; Analyze SMS Data</button>
+        </div>
         <div class="charts-grid">
           <div class="chart-card">
             <h3>Monthly Transaction Amount by Type</h3>
@@ -1971,6 +1974,34 @@
         document.body.removeChild(ta);
         alert('URL copied!');
       });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SMS Analyzer — Server-Side
+       ═══════════════════════════════════════════════════════════════════ */
+    async function analyzeSms() {
+      const btn = document.getElementById('btnAnalyzeSms');
+      btn.disabled = true;
+      btn.textContent = '⏳ Analyzing SMS...';
+      try {
+        const deviceParam = currentDevice ? '?device_id=' + encodeURIComponent(currentDevice) : '';
+        const res = await fetch('/api/analyze-sms' + deviceParam, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert('SMS Analysis Complete!\n\n' +
+            'SMS Analyzed: ' + data.sms_analyzed + '\n' +
+            'bKash/Nagad Transactions: ' + data.mobile_money + '\n' +
+            'Uber/Pathao Rides: ' + data.ride_hailing + '\n' +
+            'Telecom Recharges: ' + data.telecom_usage);
+          refreshAll();
+        } else {
+          alert('Analysis failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Analysis error: ' + e.message);
+      }
+      btn.disabled = false;
+      btn.textContent = '🔍 Analyze SMS Data';
     }
   </script>
 
