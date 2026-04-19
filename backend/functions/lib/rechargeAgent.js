@@ -152,6 +152,54 @@ function formatTimestamp(raw) {
   return String(raw);
 }
 
+// ─── Loan classifier ────────────────────────────────────────────────────
+// Detects emergency balance / airtime loan messages such as:
+//   "TK 50.25 has been added to your account." (Airtel_Loan)
+//   "Tk 20 loan credited to your account"
+//   "আপনি ৫০ টাকা ঝটপট লোন পেয়েছেন"
+const LOAN_SENDER_HINTS = [
+  'loan', 'jhotpot', 'emergency', 'ebalance', 'udhar',
+  'ঝটপট', 'লোন', 'ইমার্জেন্সি',
+];
+const LOAN_BODY_HINTS = [
+  'loan', 'emergency balance', 'jhotpot balance', 'jhotpot loan',
+  'advance balance', 'udhar',
+  'লোন', 'ঝটপট', 'ইমার্জেন্সি', 'অগ্রিম',
+];
+const LOAN_GENERIC_ADD_HINT = /has been added to your account/i;
+
+function isLoanSms(address, body) {
+  if (!body) return false;
+  const addr = (address || '').toLowerCase();
+  const lower = body.toLowerCase();
+
+  const senderMatch = LOAN_SENDER_HINTS.some(h => addr.includes(h));
+  const bodyMatch   = LOAN_BODY_HINTS.some(h => lower.includes(h));
+
+  // Generic "added to your account" — only treat as loan when the sender
+  // clearly indicates a loan/emergency service (e.g. Airtel_Loan).
+  const genericAddFromLoanSender = senderMatch && LOAN_GENERIC_ADD_HINT.test(body);
+
+  return senderMatch || bodyMatch || genericAddFromLoanSender;
+}
+
+function extractLoanAmount(body) {
+  if (!body) return null;
+  const normalized = normalizeDigits(body);
+  const patterns = [
+    /(?:tk\.?|bdt|taka|টাকা)\s*([\d,]+(?:\.\d+)?)/i,
+    /([\d,]+(?:\.\d+)?)\s*(?:tk\.?|bdt|taka|টাকা)/i,
+  ];
+  for (const re of patterns) {
+    const m = normalized.match(re);
+    if (m) {
+      const n = parseFloat(m[1].replace(/,/g, ''));
+      if (!isNaN(n) && n > 0) return n;
+    }
+  }
+  return null;
+}
+
 // ─── Main agent entry point ─────────────────────────────────────────────
 /**
  * Run the recharge agent over a list of SMS records.
@@ -159,6 +207,7 @@ function formatTimestamp(raw) {
  */
 function analyzeRechargeSms(smsList) {
   const records = [];
+  const loans = [];
 
   // Senders that belong to MFS wallets, not telecom recharge.
   const MFS_SENDERS = ['bkash', 'nagad', 'rocket', 'upay', '16247', '16167', '16216'];
@@ -167,6 +216,25 @@ function analyzeRechargeSms(smsList) {
     const body = sms.body || '';
     const addr = (sms.address || '').toLowerCase();
     if (MFS_SENDERS.some(s => addr.includes(s))) continue;
+
+    // Loan messages first — these must NEVER be counted as recharge.
+    if (isLoanSms(sms.address, body)) {
+      const amt = extractLoanAmount(body);
+      if (amt !== null) {
+        loans.push({
+          _id: sms._id,
+          device_id: sms.device_id || '',
+          sender: sms.address || '',
+          operator: detectOperator(sms.address, body),
+          amount: amt,
+          body,
+          timestamp: formatTimestamp(sms.date || sms.timestamp || sms.createdAt),
+          createdAt: sms.createdAt || new Date().toISOString(),
+        });
+      }
+      continue;
+    }
+
     if (!isRechargeSms(body)) continue;
 
     const amount = extractRechargeAmount(body);
@@ -185,6 +253,7 @@ function analyzeRechargeSms(smsList) {
   }
 
   records.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  loans.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
   const total_amount = records.reduce((s, r) => s + (r.amount || 0), 0);
   const by_operator = {};
@@ -194,18 +263,32 @@ function analyzeRechargeSms(smsList) {
     by_operator[r.operator].amount += r.amount;
   }
 
+  const loan_total = loans.reduce((s, r) => s + (r.amount || 0), 0);
+  const loan_by_operator = {};
+  for (const r of loans) {
+    if (!loan_by_operator[r.operator]) loan_by_operator[r.operator] = { count: 0, amount: 0 };
+    loan_by_operator[r.operator].count  += 1;
+    loan_by_operator[r.operator].amount += r.amount;
+  }
+
   return {
     total_count: records.length,
     total_amount: Number(total_amount.toFixed(2)),
     by_operator,
     records,
+    loan_count: loans.length,
+    loan_total: Number(loan_total.toFixed(2)),
+    loan_by_operator,
+    loans,
   };
 }
 
 module.exports = {
   analyzeRechargeSms,
   isRechargeSms,
+  isLoanSms,
   extractRechargeAmount,
+  extractLoanAmount,
   detectOperator,
   normalizeDigits,
 };

@@ -517,25 +517,32 @@ app.get('/api/sms-recharges', async (req, res) => {
     const result = analyzeRechargeSms(allSms);
 
     let records = result.records;
+    let loans = result.loans || [];
     if (operator) {
       records = records.filter(r => (r.operator || '').toLowerCase() === operator.toLowerCase());
+      loans   = loans.filter(r => (r.operator || '').toLowerCase() === operator.toLowerCase());
     }
     if (from) {
       const fromTs = new Date(from).getTime();
-      records = records.filter(r => {
+      const keep = r => {
         const t = new Date(r.timestamp || r.createdAt).getTime();
         return !isNaN(t) && t >= fromTs;
-      });
+      };
+      records = records.filter(keep);
+      loans   = loans.filter(keep);
     }
     if (to) {
       const toTs = new Date(to).getTime() + 24 * 3600 * 1000; // inclusive end day
-      records = records.filter(r => {
+      const keep = r => {
         const t = new Date(r.timestamp || r.createdAt).getTime();
         return !isNaN(t) && t <= toTs;
-      });
+      };
+      records = records.filter(keep);
+      loans   = loans.filter(keep);
     }
 
     const total_amount = records.reduce((s, r) => s + (r.amount || 0), 0);
+    const loan_total   = loans.reduce((s, r) => s + (r.amount || 0), 0);
     res.json({
       success: true,
       sms_scanned: allSms.length,
@@ -543,6 +550,10 @@ app.get('/api/sms-recharges', async (req, res) => {
       total_amount: Number(total_amount.toFixed(2)),
       by_operator: result.by_operator,
       records,
+      loan_count: loans.length,
+      loan_total: Number(loan_total.toFixed(2)),
+      loan_by_operator: result.loan_by_operator,
+      loans,
     });
   } catch (err) {
     console.error('sms-recharges error:', err);
