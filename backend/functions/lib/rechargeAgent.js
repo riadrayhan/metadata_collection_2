@@ -44,12 +44,43 @@ const RECHARGE_KEYWORDS = [
 
 const CURRENCY_KEYWORDS = ['টাকা', 'tk', 'tk.', 'bdt', 'taka'];
 
-// Words that *disqualify* a message even if it contains "recharge"
+// Words that *disqualify* a message even if it contains "recharge".
+// Includes Bengali promotional / data-pack vocabulary.
 const NEGATIVE_KEYWORDS = [
+  // English
   'failed', 'unsuccessful', 'could not',
-  'offer', 'bundle', 'pack', 'বোনাস', 'bonus',
+  'offer', 'bundle', 'pack', 'bonus',
   'otp', 'verification code',
-  'balance check', 'balance is'
+  'balance check', 'balance is',
+  'super deal', 'discount', 'free',
+  'mb', 'gb', 'minute', 'minutes',
+  // Bengali
+  'অফার',        // offer
+  'ডিল',         // deal
+  'সুপার ডিল',   // super deal
+  'বোনাস',       // bonus
+  'ফ্রি',        // free
+  'জিবি',        // GB
+  'এমবি',        // MB
+  'মিনিট',       // minutes
+  'দিন',         // days (e.g. "৩০ দিন" validity — indicates a pack)
+  'মেয়াদ',      // validity
+  'প্যাক',       // pack
+  'ছাড়',         // discount
+  'কিনুন',       // buy
+  'গ্রাহক সেবা', // customer care
+];
+
+// Confirmation phrases — if present, we consider this a TRUE recharge
+// confirmation (overrides weaker negatives like "free" which can appear in
+// carrier footers). All lowercase.
+const STRONG_RECHARGE_PHRASES = [
+  'রিচার্জ করেছেন',   // "you have recharged"
+  'রিচার্জ হয়েছে',   // "has been recharged"
+  'recharged successfully',
+  'recharge successful',
+  'have recharged',
+  'has been recharged',
 ];
 
 function isRechargeSms(body) {
@@ -62,7 +93,11 @@ function isRechargeSms(body) {
   const hasCurrency = CURRENCY_KEYWORDS.some(k => lower.includes(k));
   if (!hasCurrency) return false;
 
-  if (NEGATIVE_KEYWORDS.some(k => lower.includes(k))) return false;
+  const hasStrongConfirmation = STRONG_RECHARGE_PHRASES.some(p => lower.includes(p));
+  // Only the strong confirmation can override the promotional filter.
+  if (!hasStrongConfirmation) {
+    if (NEGATIVE_KEYWORDS.some(k => lower.includes(k))) return false;
+  }
 
   return true;
 }
