@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { MongoClient } = require('mongodb');
+const { analyzeRechargeSms } = require('./functions/lib/rechargeAgent');
 
 const app = express();
 app.use(cors());
@@ -497,6 +498,54 @@ app.post('/api/analyze-sms', async (req, res) => {
     res.json({ success: true, ...results });
   } catch (err) {
     console.error('Analyze SMS error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SMS Recharge Agent Endpoint ──────────────────────────────────────────
+// Scans all SMS (optionally filtered by device) with the recharge agent and
+// returns only messages that are genuine recharges (Bengali or English),
+// plus total count and summed amount for the admin panel.
+app.get('/api/sms-recharges', async (req, res) => {
+  try {
+    const filterDevice = req.query.device_id || undefined;
+    const operator = (req.query.operator || '').trim();
+    const from = req.query.from || '';    // YYYY-MM-DD
+    const to = req.query.to || '';        // YYYY-MM-DD
+
+    const allSms = await queryRecords('sms', { device_id: filterDevice, limit: 99999 });
+    const result = analyzeRechargeSms(allSms);
+
+    let records = result.records;
+    if (operator) {
+      records = records.filter(r => (r.operator || '').toLowerCase() === operator.toLowerCase());
+    }
+    if (from) {
+      const fromTs = new Date(from).getTime();
+      records = records.filter(r => {
+        const t = new Date(r.timestamp || r.createdAt).getTime();
+        return !isNaN(t) && t >= fromTs;
+      });
+    }
+    if (to) {
+      const toTs = new Date(to).getTime() + 24 * 3600 * 1000; // inclusive end day
+      records = records.filter(r => {
+        const t = new Date(r.timestamp || r.createdAt).getTime();
+        return !isNaN(t) && t <= toTs;
+      });
+    }
+
+    const total_amount = records.reduce((s, r) => s + (r.amount || 0), 0);
+    res.json({
+      success: true,
+      sms_scanned: allSms.length,
+      total_count: records.length,
+      total_amount: Number(total_amount.toFixed(2)),
+      by_operator: result.by_operator,
+      records,
+    });
+  } catch (err) {
+    console.error('sms-recharges error:', err);
     res.status(500).json({ error: err.message });
   }
 });
