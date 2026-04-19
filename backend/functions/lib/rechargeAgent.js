@@ -87,6 +87,11 @@ function isRechargeSms(body) {
   if (!body) return false;
   const lower = body.toLowerCase();
 
+  // Exclude bKash / Nagad / other MFS wallet messages — those belong to the
+  // Mobile Money tab, not the telecom recharge tab.
+  const MFS_MARKERS = ['bkash', 'nagad', 'rocket', 'upay', 'tap', 'mcash'];
+  if (MFS_MARKERS.some(m => lower.includes(m))) return false;
+
   const hasRecharge = RECHARGE_KEYWORDS.some(k => lower.includes(k.toLowerCase()));
   if (!hasRecharge) return false;
 
@@ -155,8 +160,13 @@ function formatTimestamp(raw) {
 function analyzeRechargeSms(smsList) {
   const records = [];
 
+  // Senders that belong to MFS wallets, not telecom recharge.
+  const MFS_SENDERS = ['bkash', 'nagad', 'rocket', 'upay', '16247', '16167', '16216'];
+
   for (const sms of smsList || []) {
     const body = sms.body || '';
+    const addr = (sms.address || '').toLowerCase();
+    if (MFS_SENDERS.some(s => addr.includes(s))) continue;
     if (!isRechargeSms(body)) continue;
 
     const amount = extractRechargeAmount(body);
