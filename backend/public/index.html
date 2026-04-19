@@ -365,6 +365,14 @@
       </div>
       <div class="filter-bar" id="recharge-filter">
         <div class="filter-group">
+          <label>Type</label>
+          <select id="recharge-filter-type">
+            <option value="both">Both (Recharge + Loan)</option>
+            <option value="recharge">Recharge only</option>
+            <option value="loan">Loan only</option>
+          </select>
+        </div>
+        <div class="filter-group">
           <label>From</label>
           <input type="date" id="recharge-filter-from" />
         </div>
@@ -1179,22 +1187,42 @@
         const op = document.getElementById('recharge-filter-operator').value;
         const from = document.getElementById('recharge-filter-from').value;
         const to = document.getElementById('recharge-filter-to').value;
+        const typeFilter = (document.getElementById('recharge-filter-type') || {}).value || 'both';
         if (op) params.set('operator', op);
         if (from) params.set('from', from);
         if (to) params.set('to', to);
 
         const res = await apiGet('/api/sms-recharges?' + params.toString());
-        document.getElementById('recharge-count').textContent = res.total_count;
-        document.getElementById('recharge-total').textContent = '৳ ' + Number(res.total_amount || 0).toLocaleString();
-        document.getElementById('recharge-scanned').textContent = res.sms_scanned;
-        document.getElementById('loan-count').textContent = res.loan_count || 0;
-        document.getElementById('loan-total').textContent = '৳ ' + Number(res.loan_total || 0).toLocaleString();
-        document.getElementById('recharge-info').textContent =
-          res.total_count + ' recharge SMS + ' + (res.loan_count || 0) + ' loan SMS detected from ' + res.sms_scanned + ' total SMS';
 
-        // Table of recharges
-        if (!res.records || res.records.length === 0) {
-          document.getElementById('recharge-table').innerHTML = emptyState('No recharge SMS detected');
+        const showRecharge = typeFilter === 'both' || typeFilter === 'recharge';
+        const showLoan     = typeFilter === 'both' || typeFilter === 'loan';
+
+        const rechargeCount  = showRecharge ? res.total_count : 0;
+        const rechargeAmount = showRecharge ? (res.total_amount || 0) : 0;
+        const loanCount      = showLoan ? (res.loan_count || 0) : 0;
+        const loanAmount     = showLoan ? (res.loan_total  || 0) : 0;
+
+        document.getElementById('recharge-count').textContent = showRecharge ? rechargeCount : '—';
+        document.getElementById('recharge-total').textContent = showRecharge ? ('৳ ' + Number(rechargeAmount).toLocaleString()) : '—';
+        document.getElementById('loan-count').textContent     = showLoan ? loanCount : '—';
+        document.getElementById('loan-total').textContent     = showLoan ? ('৳ ' + Number(loanAmount).toLocaleString()) : '—';
+        document.getElementById('recharge-scanned').textContent = res.sms_scanned;
+
+        let info = '';
+        if (showRecharge && showLoan) info = rechargeCount + ' recharge + ' + loanCount + ' loan SMS from ' + res.sms_scanned + ' total';
+        else if (showRecharge)        info = rechargeCount + ' recharge SMS from ' + res.sms_scanned + ' total (loan hidden)';
+        else                          info = loanCount + ' loan SMS from ' + res.sms_scanned + ' total (recharge hidden)';
+        document.getElementById('recharge-info').textContent = info;
+
+        // Recharge table
+        const rechargeSection = document.getElementById('recharge-table');
+        const breakdownSection = document.getElementById('recharge-breakdown');
+        if (!showRecharge) {
+          rechargeSection.innerHTML = '';
+          breakdownSection.innerHTML = '';
+        } else if (!res.records || res.records.length === 0) {
+          rechargeSection.innerHTML = emptyState('No recharge SMS detected');
+          breakdownSection.innerHTML = '';
         } else {
           let h = '<table><thead><tr><th>Sender</th><th>Operator</th><th>Amount (Tk)</th><th>Message</th><th>Time</th><th>Device</th></tr></thead><tbody>';
           res.records.forEach(r => {
@@ -1207,25 +1235,28 @@
               + '<td>' + escHtml(r.device_id) + '</td>'
               + '</tr>';
           });
-          document.getElementById('recharge-table').innerHTML = h + '</tbody></table>';
-        }
+          rechargeSection.innerHTML = h + '</tbody></table>';
 
-        // Breakdown by operator
-        const bo = res.by_operator || {};
-        const ops = Object.keys(bo);
-        if (ops.length === 0) {
-          document.getElementById('recharge-breakdown').innerHTML = '';
-        } else {
-          let h = '<table><thead><tr><th>Operator</th><th>Recharges</th><th>Total Amount (Tk)</th></tr></thead><tbody>';
-          ops.forEach(o => {
-            h += '<tr><td>' + escHtml(o) + '</td><td>' + bo[o].count + '</td><td>৳ ' + Number(bo[o].amount).toLocaleString() + '</td></tr>';
-          });
-          document.getElementById('recharge-breakdown').innerHTML = h + '</tbody></table>';
+          // Breakdown by operator
+          const bo = res.by_operator || {};
+          const ops = Object.keys(bo);
+          if (ops.length === 0) {
+            breakdownSection.innerHTML = '';
+          } else {
+            let hh = '<table><thead><tr><th>Operator</th><th>Recharges</th><th>Total Amount (Tk)</th></tr></thead><tbody>';
+            ops.forEach(o => {
+              hh += '<tr><td>' + escHtml(o) + '</td><td>' + bo[o].count + '</td><td>৳ ' + Number(bo[o].amount).toLocaleString() + '</td></tr>';
+            });
+            breakdownSection.innerHTML = hh + '</tbody></table>';
+          }
         }
 
         // Loans table
-        if (!res.loans || res.loans.length === 0) {
-          document.getElementById('loan-table').innerHTML = emptyState('No loan SMS detected');
+        const loanSection = document.getElementById('loan-table');
+        if (!showLoan) {
+          loanSection.innerHTML = '';
+        } else if (!res.loans || res.loans.length === 0) {
+          loanSection.innerHTML = emptyState('No loan SMS detected');
         } else {
           let h = '<table><thead><tr><th>Sender</th><th>Operator</th><th>Loan Amount (Tk)</th><th>Message</th><th>Time</th><th>Device</th></tr></thead><tbody>';
           res.loans.forEach(r => {
@@ -1238,8 +1269,15 @@
               + '<td>' + escHtml(r.device_id) + '</td>'
               + '</tr>';
           });
-          document.getElementById('loan-table').innerHTML = h + '</tbody></table>';
+          loanSection.innerHTML = h + '</tbody></table>';
         }
+
+        // Toggle section headings based on filter
+        document.querySelectorAll('#tab-smsrecharge h3').forEach(el => {
+          const t = el.textContent || '';
+          if (t.includes('Breakdown')) el.style.display = showRecharge ? '' : 'none';
+          if (t.includes('Loan SMS'))  el.style.display = showLoan ? '' : 'none';
+        });
       } catch (e) { console.error('loadSmsRecharges error:', e); }
     }
 
@@ -1247,6 +1285,8 @@
       document.getElementById('recharge-filter-operator').value = '';
       document.getElementById('recharge-filter-from').value = '';
       document.getElementById('recharge-filter-to').value = '';
+      const t = document.getElementById('recharge-filter-type');
+      if (t) t.value = 'both';
       loadSmsRecharges();
     }
 
