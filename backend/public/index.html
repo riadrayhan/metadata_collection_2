@@ -400,6 +400,7 @@
       <div class="toolbar">
         <span class="info" id="recharge-info"></span>
         <div class="btn-group">
+          <button class="btn btn-csv" onclick="exportRechargesCSV()">&#x1F4C4; Export CSV</button>
           <button class="btn btn-primary" onclick="loadSmsRecharges()">Refresh</button>
         </div>
       </div>
@@ -1180,6 +1181,8 @@
     }
 
     /* ─── SMS Recharge Agent (Bengali + English) ─── */
+    let lastRechargeData = null;
+
     async function loadSmsRecharges() {
       try {
         const params = new URLSearchParams();
@@ -1193,6 +1196,7 @@
         if (to) params.set('to', to);
 
         const res = await apiGet('/api/sms-recharges?' + params.toString());
+        lastRechargeData = { res, typeFilter };
 
         const showRecharge = typeFilter === 'both' || typeFilter === 'recharge';
         const showLoan     = typeFilter === 'both' || typeFilter === 'loan';
@@ -1288,6 +1292,39 @@
       const t = document.getElementById('recharge-filter-type');
       if (t) t.value = 'both';
       loadSmsRecharges();
+    }
+
+    async function exportRechargesCSV() {
+      if (!lastRechargeData) await loadSmsRecharges();
+      if (!lastRechargeData) return alert('No data to export.');
+      const { res, typeFilter } = lastRechargeData;
+
+      const showRecharge = typeFilter === 'both' || typeFilter === 'recharge';
+      const showLoan     = typeFilter === 'both' || typeFilter === 'loan';
+
+      const columns = ['Category', 'Sender', 'Operator', 'Amount (Tk)', 'Message', 'Time', 'Device ID'];
+      const rows = [];
+
+      if (showRecharge) {
+        (res.records || []).forEach(r => rows.push([
+          'Recharge', r.sender || '', r.operator || '', r.amount,
+          r.body || '', r.timestamp || r.createdAt || '', r.device_id || ''
+        ]));
+      }
+      if (showLoan) {
+        (res.loans || []).forEach(r => rows.push([
+          'Loan', r.sender || '', r.operator || '', r.amount,
+          r.body || '', r.timestamp || r.createdAt || '', r.device_id || ''
+        ]));
+      }
+
+      if (rows.length === 0) return alert('No data to export.');
+
+      const label = typeFilter === 'recharge' ? 'recharge'
+                  : typeFilter === 'loan'     ? 'loan'
+                  : 'recharge_loan';
+      const filename = 'sms_' + label + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+      downloadCSV(filename, columns, rows);
     }
 
     async function loadLocation() {
