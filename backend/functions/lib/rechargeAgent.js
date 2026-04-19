@@ -157,6 +157,10 @@ function formatTimestamp(raw) {
 //   "TK 50.25 has been added to your account." (Airtel_Loan)
 //   "Tk 20 loan credited to your account"
 //   "আপনি ৫০ টাকা ঝটপট লোন পেয়েছেন"
+//
+// Must REJECT loan *offer* / eligibility ads like:
+//   "সাথেই থাকুন! আপনি 20টাকা লোনের যোগ্য, এয়ারটাইম..."
+//   "Dial *123# to get Tk 50 loan"
 const LOAN_SENDER_HINTS = [
   'loan', 'jhotpot', 'emergency', 'ebalance', 'udhar',
   'ঝটপট', 'লোন', 'ইমার্জেন্সি',
@@ -168,6 +172,50 @@ const LOAN_BODY_HINTS = [
 ];
 const LOAN_GENERIC_ADD_HINT = /has been added to your account/i;
 
+// Phrases indicating the loan was ACTUALLY taken / credited (must contain at
+// least one of these for the message to count). Kept lower-case for match.
+const LOAN_CONFIRM_PHRASES = [
+  // English
+  'has been added to your account',
+  'loan credited',
+  'loan of tk',
+  'loan of bdt',
+  'loan received',
+  'loan received successfully',
+  'you have taken',
+  'you have availed',
+  'you have received',
+  'loan successful',
+  'advance of tk',
+  'advance credited',
+  // Bengali
+  'লোন পেয়েছেন',      // "you have received a loan"
+  'লোন নিয়েছেন',       // "you have taken a loan"
+  'লোন যোগ হয়েছে',   // "loan has been added"
+  'লোন যুক্ত হয়েছে',
+  'যোগ হয়েছে',          // "has been added"
+  'পেয়েছেন',             // "you have received"
+  'জমা হয়েছে',          // "has been credited"
+  'ক্রেডিট হয়েছে',
+];
+
+// Phrases that disqualify a loan message as an OFFER / eligibility ad.
+const LOAN_OFFER_PHRASES = [
+  // English
+  'eligible', 'eligibility', 'you are eligible',
+  'dial *', 'to get', 'to avail', 'to take',
+  'offer', 'available', 'apply now',
+  // Bengali
+  'যোগ্য',         // "eligible"
+  'লোনের যোগ্য',   // "eligible for loan"
+  'নিতে পারেন',     // "you can take"
+  'পেতে পারেন',    // "you can receive"
+  'পেতে', 'নিতে',
+  'ডায়াল',         // "dial"
+  'অফার',
+  'সাথেই থাকুন',    // "stay with us" — ad sign-off
+];
+
 function isLoanSms(address, body) {
   if (!body) return false;
   const addr = (address || '').toLowerCase();
@@ -175,12 +223,20 @@ function isLoanSms(address, body) {
 
   const senderMatch = LOAN_SENDER_HINTS.some(h => addr.includes(h));
   const bodyMatch   = LOAN_BODY_HINTS.some(h => lower.includes(h));
-
-  // Generic "added to your account" — only treat as loan when the sender
-  // clearly indicates a loan/emergency service (e.g. Airtel_Loan).
   const genericAddFromLoanSender = senderMatch && LOAN_GENERIC_ADD_HINT.test(body);
 
-  return senderMatch || bodyMatch || genericAddFromLoanSender;
+  const hasLoanHint = senderMatch || bodyMatch || genericAddFromLoanSender;
+  if (!hasLoanHint) return false;
+
+  // Reject loan offer / eligibility ads.
+  if (LOAN_OFFER_PHRASES.some(p => lower.includes(p))) return false;
+
+  // Require an explicit confirmation phrase — otherwise we can't be sure a
+  // loan was actually taken.
+  const hasConfirmation = LOAN_CONFIRM_PHRASES.some(p => lower.includes(p));
+  if (!hasConfirmation) return false;
+
+  return true;
 }
 
 function extractLoanAmount(body) {
