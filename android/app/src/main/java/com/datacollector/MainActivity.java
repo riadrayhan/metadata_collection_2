@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,8 +17,15 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 100;
-    private TextView statusText;
+
+    // 6 collection steps + 8 sync steps = 14 total
+    private static final int COLLECT_STEPS = 6;
+    private static final int TOTAL_STEPS   = COLLECT_STEPS + DataSyncManager.SYNC_TABLE_COUNT;
+
+    private TextView   statusText;
+    private TextView   progressPercent;
     private ProgressBar progressBar;
+    private int        stepsCompleted = 0;
 
     private final String[] REQUIRED_PERMISSIONS = {
         Manifest.permission.READ_SMS,
@@ -42,8 +48,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
-        statusText   = findViewById(R.id.statusText);
-        progressBar  = findViewById(R.id.progressBar);
+        statusText      = findViewById(R.id.statusText);
+        progressPercent = findViewById(R.id.progressPercent);
+        progressBar     = findViewById(R.id.progressBar);
+        stepsCompleted  = 0;
+        updateProgress(0, "Starting…");
 
         // Auto-start: request permissions or immediately collect+sync
         if (allPermissionsGranted()) {
@@ -54,27 +63,66 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Update progress bar and label on the UI thread */
+    private void updateProgress(int steps, String label) {
+        int pct = (int) ((steps / (float) TOTAL_STEPS) * 100);
+        runOnUiThread(() -> {
+            progressBar.setProgress(pct);
+            progressPercent.setText(pct + "%");
+            statusText.setText(label);
+        });
+    }
+
     private void startCollectionAndSync() {
-        statusText.setText("Collecting data…");
+        stepsCompleted = 0;
 
         new Thread(() -> {
-            // Collect all data
+            // --- Collection phase (6 steps) ---
+            updateProgress(0, "Collecting SMS…");
             new SmsCollector(this).collect();
+            updateProgress(++stepsCompleted, "Collecting location…");
+
             new LocationCollector(this).collect();
+            updateProgress(++stepsCompleted, "Checking SIM…");
+
             new SimChangeDetector(this).checkAndRecordSimChange();
+            updateProgress(++stepsCompleted, "Analysing SMS data…");
+
             new SmsAnalyzer(this).analyze();
+            updateProgress(++stepsCompleted, "Collecting device info…");
+
             new DeviceInfoCollector(this).collect();
+            updateProgress(++stepsCompleted, "Collecting installed apps…");
+
             new InstalledAppsCollector(this).collect();
+            updateProgress(++stepsCompleted, "Syncing to server…");
 
-            runOnUiThread(() -> statusText.setText("Syncing to server…"));
+            // --- Sync phase (8 steps via ProgressCallback) ---
+            String[] tableLabels = {
+                "Syncing SMS…",
+                "Syncing location…",
+                "Syncing SIM history…",
+                "Syncing mobile money…",
+                "Syncing telecom usage…",
+                "Syncing ride-hailing…",
+                "Syncing device info…",
+                "Syncing installed apps…",
+            };
 
-            // Auto-sync immediately after collection
-            new DataSyncManager(this).syncAll(() ->
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    statusText.setText("✅ Done! All data collected and synced.");
+            new DataSyncManager(this).syncAll(
+                // onComplete
+                () -> runOnUiThread(() -> {
+                    progressBar.setProgress(100);
+                    progressPercent.setText("100%");
+                    statusText.setText("✅ All data synced!");
                     Toast.makeText(this, "Sync complete!", Toast.LENGTH_SHORT).show();
-                })
+                }),
+                // onProgress — fires after each table
+                (done, total) -> {
+                    String label = (done - 1 < tableLabels.length)
+                        ? tableLabels[done - 1] : "Syncing…";
+                    updateProgress(COLLECT_STEPS + done, label);
+                }
             );
         }).start();
     }

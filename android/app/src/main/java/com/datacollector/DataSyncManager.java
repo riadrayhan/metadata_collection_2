@@ -25,16 +25,42 @@ public class DataSyncManager {
         void onComplete();
     }
 
-    public void syncAll(SyncCallback callback) {
+    public interface ProgressCallback {
+        /** Called after each table is synced. done=tables finished, total=total tables */
+        void onProgress(int done, int total);
+    }
+
+    /** Total number of tables synced — used by callers to calculate overall progress */
+    public static final int SYNC_TABLE_COUNT = 8;
+
+    public void syncAll(SyncCallback callback, ProgressCallback progressCallback) {
         new Thread(() -> {
-            syncTable("sms",             db.getUnsyncedSms());
-            syncTable("location",        db.getUnsyncedLocations());
-            syncTable("sim_history",     db.getUnsyncedSimHistory());
-            syncTable("mobile_money",    db.getUnsyncedMobileMoney());
-            syncTable("telecom_usage",   db.getUnsyncedTelecomUsage());
-            syncTable("ride_hailing",    db.getUnsyncedRideHailing());
-            syncTable("device_info",     db.getUnsyncedDeviceInfo());
-            syncTable("installed_apps",  db.getUnsyncedInstalledApps());
+            String[][] tables = {
+                {"sms",            null},
+                {"location",       null},
+                {"sim_history",    null},
+                {"mobile_money",   null},
+                {"telecom_usage",  null},
+                {"ride_hailing",   null},
+                {"device_info",    null},
+                {"installed_apps", null},
+            };
+            JSONArray[] data = {
+                db.getUnsyncedSms(),
+                db.getUnsyncedLocations(),
+                db.getUnsyncedSimHistory(),
+                db.getUnsyncedMobileMoney(),
+                db.getUnsyncedTelecomUsage(),
+                db.getUnsyncedRideHailing(),
+                db.getUnsyncedDeviceInfo(),
+                db.getUnsyncedInstalledApps(),
+            };
+            for (int i = 0; i < tables.length; i++) {
+                syncTable(tables[i][0], data[i]);
+                if (progressCallback != null) {
+                    progressCallback.onProgress(i + 1, SYNC_TABLE_COUNT);
+                }
+            }
             if (callback != null) callback.onComplete();
         }).start();
     }

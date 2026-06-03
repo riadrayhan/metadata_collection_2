@@ -14,21 +14,36 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:textColor="#3F51B5"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="32dp" />
 
     <ProgressBar
         android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="280dp"
+        android:layout_height="16dp"
+        android:max="100"
+        android:progress="0"
+        android:progressTint="#3F51B5"
+        android:progressBackgroundTint="#C5CAE9"
+        android:layout_marginBottom="10dp" />
+
+    <TextView
+        android:id="@+id/progressPercent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp" />
+        android:text="0%"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#3F51B5"
+        android:layout_marginBottom="16dp" />
 
     <TextView
         android:id="@+id/statusText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Starting..."
-        android:textSize="16sp"
-        android:textColor="#444444"
+        android:textSize="14sp"
+        android:textColor="#666666"
         android:gravity="center" />
 
 </LinearLayout>
