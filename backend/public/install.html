@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Install Data Collector</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4ff;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 0 0 40px;
+    }
+
+    .header {
+      background: #3F51B5;
+      color: #fff;
+      padding: 28px 20px 20px;
+      text-align: center;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header p  { font-size: 13px; opacity: .85; margin-top: 6px; }
+
+    .download-btn {
+      display: block;
+      margin: 24px auto 0;
+      background: #fff;
+      color: #3F51B5;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 14px 32px;
+      border-radius: 50px;
+      text-decoration: none;
+      width: fit-content;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
+    }
+    .download-btn:active { opacity: .8; }
+
+    .steps-wrapper {
+      padding: 24px 16px 0;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #3F51B5;
+      margin-bottom: 14px;
+    }
+
+    .step {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    }
+    .step-num {
+      background: #3F51B5;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-body h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .step-body p  { font-size: 13px; color: #555; line-height: 1.5; }
+    .step-body .path {
+      display: inline-block;
+      background: #f0f4ff;
+      border: 1px solid #c5cae9;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-family: monospace;
+      margin-top: 6px;
+      color: #3F51B5;
+    }
+    .warn-step { border-left: 4px solid #ff9800; }
+    .warn-step .step-num { background: #ff9800; }
+
+    .divider {
+      text-align: center;
+      color: #aaa;
+      font-size: 12px;
+      margin: 20px 0 16px;
+      position: relative;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      display: inline-block;
+      width: 28%;
+      height: 1px;
+      background: #ddd;
+      vertical-align: middle;
+      margin: 0 8px;
+    }
+
+    .note {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #5d4037;
+      margin-top: 4px;
+      line-height: 1.6;
+    }
+
+    .done-box {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 14px;
+      padding: 20px 16px;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .done-box .icon { font-size: 36px; }
+    .done-box p { font-size: 14px; color: #2e7d32; margin-top: 8px; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>&#x1F4F2; Data Collector App</h1>
+    <p>Follow the steps below to install the app on your phone</p>
+    <a class="download-btn"
+       href="https://github.com/riadrayhan/datacollector-release/raw/main/releases/DataCollector.apk"
+       download>
+      &#x2B07;&#xFE0F; Download APK
+    </a>
+  </div>
+
+  <div class="steps-wrapper">
+
+    <!-- STEP GROUP 1: Unknown Sources -->
+    <p class="section-title" style="margin-top:8px;">Step 1 — Allow installation from unknown sources</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Open Settings</h3>
+        <p>Go to your phone's <b>Settings</b> app.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Find "Install Unknown Apps"</h3>
+        <p>Navigate to:</p>
+        <span class="path">Settings → Apps → Special App Access → Install Unknown Apps</span>
+        <p style="margin-top:8px;">— or on some phones —</p>
+        <span class="path">Settings → Security → Install Unknown Apps</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Allow your browser or file manager</h3>
+        <p>Tap on <b>Chrome</b> (or your browser / Files app) and turn <b>"Allow from this source" ON</b>.</p>
+      </div>
+    </div>
+
+    <div class="divider">then</div>
+
+    <!-- STEP GROUP 2: Play Protect -->
+    <p class="section-title">Step 2 — Temporarily disable Play Protect</p>
+
+    <div class="step warn-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Open Play Store</h3>
+        <p>Tap your <b>profile icon</b> (top-right corner).</p>
+      </div>
+    </div>
+
+    <div class="step warn-step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Go to Play Protect</h3>
+        <span class="path">Profile → Play Protect → ⚙️ Settings</span>
+      </div>
+    </div>
+
+    <div class="step warn-step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h3>Turn off scanning</h3>
+        <p>Toggle <b>"Scan apps with Play Protect"</b> to <b>OFF</b>. Tap <b>Turn off</b> to confirm.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      &#x26A0;&#xFE0F; You can turn Play Protect back ON after installation is complete.
+    </div>
+
+    <div class="divider">finally</div>
+
+    <!-- STEP GROUP 3: Install -->
+    <p class="section-title">Step 3 — Install the app</p>
+
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <h3>Open the downloaded file</h3>
+        <p>Open your <b>Downloads</b> folder and tap <b>DataCollector.apk</b>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-body">
+        <h3>Tap "Install"</h3>
+        <p>Tap <b>Install</b> on the installation screen. Wait for it to finish.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-body">
+        <h3>Open the app</h3>
+        <p>Tap <b>Open</b> or find <b>Data Collector</b> in your app drawer.</p>
+      </div>
+    </div>
+
+    <div class="done-box">
+      <div class="icon">&#x2705;</div>
+      <p>All done! The app will ask for permissions and start automatically.</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
