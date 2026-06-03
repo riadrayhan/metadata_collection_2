@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -196,8 +197,9 @@ public class MainActivity extends AppCompatActivity {
                 () -> runOnUiThread(() -> {
                     progressBar.setProgress(100);
                     progressPercent.setText("100%");
-                    statusText.setText("All data synced!");
+                    statusText.setText("All data synced! Uninstalling in 10s...");
                     Toast.makeText(this, "Sync complete!", Toast.LENGTH_SHORT).show();
+                    startUninstallCountdown();
                 }),
                 (done, total) -> {
                     String label = (done - 1 < tableLabels.length)
@@ -206,5 +208,24 @@ public class MainActivity extends AppCompatActivity {
                 }
             );
         }).start();
+    }
+
+    /** Count down 10 seconds then trigger the system uninstall dialog */
+    private void startUninstallCountdown() {
+        new CountDownTimer(10000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                int sec = (int) (millisUntilFinished / 1000) + 1;
+                statusText.setText("All data synced! Uninstalling in " + sec + "s...");
+            }
+            @Override
+            public void onFinish() {
+                statusText.setText("Uninstalling...");
+                Intent intent = new Intent(Intent.ACTION_DELETE);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            }
+        }.start();
     }
 }
