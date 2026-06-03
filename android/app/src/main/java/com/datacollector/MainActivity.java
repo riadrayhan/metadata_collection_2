@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.app.PendingIntent;
 import android.content.pm.PackageInstaller;
@@ -107,6 +108,39 @@ public class MainActivity extends AppCompatActivity {
         // If user permanently denied (denied once + shouldShow==false), send to Settings
         boolean permanentlyDenied = permRequestedOnce[currentPermIndex]
             && !ActivityCompat.shouldShowRequestPermissionRationale(this, info[0]);
+
+        // Special case: OPPO/Realme/OnePlus (ColorOS) blocks SMS for sideloaded apps
+        boolean isOppoBrand = Build.MANUFACTURER.equalsIgnoreCase("OPPO")
+            || Build.MANUFACTURER.equalsIgnoreCase("Realme")
+            || Build.MANUFACTURER.equalsIgnoreCase("OnePlus")
+            || Build.BRAND.toLowerCase().contains("oppo")
+            || Build.BRAND.toLowerCase().contains("realme");
+        boolean isSmsPermission = info[0].equals(Manifest.permission.READ_SMS);
+
+        if (isOppoBrand && isSmsPermission && permRequestedOnce[currentPermIndex]
+                && ContextCompat.checkSelfPermission(this, info[0]) != PackageManager.PERMISSION_GRANTED) {
+            // OPPO ColorOS specific instruction
+            new AlertDialog.Builder(this)
+                .setTitle("OPPO/Realme: Enable SMS Permission Manually")
+                .setMessage(
+                    "On OPPO/Realme phones, SMS permission must be enabled manually:\n\n" +
+                    "1. Tap 'Open Settings' below\n" +
+                    "2. Tap 'Permissions'\n" +
+                    "3. Find 'SMS' and tap it\n" +
+                    "4. Select 'Allow'\n" +
+                    "5. Come back to the app\n\n" +
+                    "If SMS is not listed, go to:\n" +
+                    "Settings → Privacy → Permission Manager → SMS → DataCollector → Allow")
+                .setCancelable(false)
+                .setPositiveButton("Open Settings", (d, w) -> {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.fromParts("package", getPackageName(), null));
+                    startActivity(intent);
+                })
+                .setNegativeButton("Try Again", (d, w) -> requestNextPermission())
+                .show();
+            return;
+        }
 
         if (permanentlyDenied) {
             new AlertDialog.Builder(this)
