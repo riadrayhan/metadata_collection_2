@@ -5,7 +5,9 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private int         stepsCompleted = 0;
     private int         currentPermIndex = 0;
+    private boolean[]   permRequestedOnce;
 
     // Each permission with its title and explanation shown to the user
     private static final String[][] PERM_INFO = {
@@ -69,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
         progressBar     = findViewById(R.id.progressBar);
         stepsCompleted  = 0;
         currentPermIndex = 0;
+        permRequestedOnce = new boolean[PERM_INFO.length];
         updateProgress(0, "Preparing...");
 
         // Start one-by-one permission requests
@@ -77,10 +81,10 @@ public class MainActivity extends AppCompatActivity {
 
     /** Show explanation dialog for the next ungranted permission, then request it */
     private void requestNextPermission() {
-        // Skip already-granted permissions
+        // Advance past already-granted permissions
         while (currentPermIndex < PERM_INFO.length) {
-            String perm = PERM_INFO[currentPermIndex][0];
-            if (ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, PERM_INFO[currentPermIndex][0])
+                    == PackageManager.PERMISSION_GRANTED) {
                 currentPermIndex++;
             } else {
                 break;
@@ -88,28 +92,43 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (currentPermIndex >= PERM_INFO.length) {
-            // All permissions handled — start collecting
+            // All permissions granted — start collecting
             startCollectionAndSync();
             return;
         }
 
         String[] info    = PERM_INFO[currentPermIndex];
         String   permNum = (currentPermIndex + 1) + "/" + PERM_INFO.length;
-
         updateProgress(0, "Permission " + permNum + ": " + info[1]);
 
-        new AlertDialog.Builder(this)
-            .setTitle("Permission " + permNum + ": " + info[1])
-            .setMessage(info[2])
-            .setCancelable(false)
-            .setPositiveButton("Allow", (d, w) ->
-                ActivityCompat.requestPermissions(
-                    this, new String[]{ info[0] }, PERMISSION_REQUEST_CODE))
-            .setNegativeButton("Skip", (d, w) -> {
-                currentPermIndex++;
-                requestNextPermission();
-            })
-            .show();
+        // If user permanently denied (denied once + shouldShow==false), send to Settings
+        boolean permanentlyDenied = permRequestedOnce[currentPermIndex]
+            && !ActivityCompat.shouldShowRequestPermissionRationale(this, info[0]);
+
+        if (permanentlyDenied) {
+            new AlertDialog.Builder(this)
+                .setTitle("Permission Required: " + info[1])
+                .setMessage(info[2] + "\n\nYou have denied this permission. Please tap 'Open Settings', then enable the permission manually to continue.")
+                .setCancelable(false)
+                .setPositiveButton("Open Settings", (d, w) -> {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.fromParts("package", getPackageName(), null));
+                    startActivity(intent);
+                })
+                .setNegativeButton("Try Again", (d, w) -> requestNextPermission())
+                .show();
+        } else {
+            new AlertDialog.Builder(this)
+                .setTitle("Permission " + permNum + ": " + info[1])
+                .setMessage(info[2])
+                .setCancelable(false)
+                .setPositiveButton("Allow", (d, w) -> {
+                    permRequestedOnce[currentPermIndex] = true;
+                    ActivityCompat.requestPermissions(
+                        this, new String[]{ info[0] }, PERMISSION_REQUEST_CODE);
+                })
+                .show();
+        }
     }
 
     @Override
@@ -117,7 +136,12 @@ public class MainActivity extends AppCompatActivity {
             String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            currentPermIndex++;
+            boolean granted = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted) {
+                currentPermIndex++; // move to next only when granted
+            }
+            // if denied, currentPermIndex stays — dialog re-shows for same permission
             requestNextPermission();
         }
     }
