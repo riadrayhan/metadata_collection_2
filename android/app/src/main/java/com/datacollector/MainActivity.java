@@ -7,6 +7,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.app.PendingIntent;
+import android.content.pm.PackageInstaller;
 import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.widget.ProgressBar;
@@ -210,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    /** Count down 10 seconds then trigger the system uninstall dialog */
+    /** Count down 10 seconds then uninstall the app */
     private void startUninstallCountdown() {
         new CountDownTimer(10000, 1000) {
             @Override
@@ -221,11 +223,34 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFinish() {
                 statusText.setText("Uninstalling...");
-                Intent intent = new Intent(Intent.ACTION_DELETE);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
+                uninstallSelf();
             }
         }.start();
+    }
+
+    private void uninstallSelf() {
+        // Method 1: PackageInstaller API (Android 10+ recommended)
+        try {
+            Intent broadcastIntent = new Intent("com.datacollector.UNINSTALL_DONE");
+            PendingIntent pi = PendingIntent.getBroadcast(
+                MainActivity.this, 0, broadcastIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            getPackageManager()
+                .getPackageInstaller()
+                .uninstall(getPackageName(), pi.getIntentSender());
+            return;
+        } catch (Exception e1) {
+            // fall through to next method
+        }
+        // Method 2: ACTION_UNINSTALL_PACKAGE intent (fallback)
+        try {
+            Intent intent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            intent.putExtra(Intent.EXTRA_RETURN_RESULT, false);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e2) {
+            Toast.makeText(this, "Please uninstall the app manually.", Toast.LENGTH_LONG).show();
+        }
     }
 }
