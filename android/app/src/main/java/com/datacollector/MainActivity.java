@@ -119,23 +119,45 @@ public class MainActivity extends AppCompatActivity {
 
         if (isOppoBrand && isSmsPermission && permRequestedOnce[currentPermIndex]
                 && ContextCompat.checkSelfPermission(this, info[0]) != PackageManager.PERMISSION_GRANTED) {
-            // OPPO ColorOS specific instruction
+            // OPPO ColorOS: SMS toggle may be grayed out in Settings — show full workaround
             new AlertDialog.Builder(this)
-                .setTitle("OPPO/Realme: Enable SMS Permission Manually")
+                .setTitle("OPPO/Realme: SMS Permission Blocked")
                 .setMessage(
-                    "On OPPO/Realme phones, SMS permission must be enabled manually:\n\n" +
-                    "1. Tap 'Open Settings' below\n" +
-                    "2. Tap 'Permissions'\n" +
-                    "3. Find 'SMS' and tap it\n" +
-                    "4. Select 'Allow'\n" +
-                    "5. Come back to the app\n\n" +
-                    "If SMS is not listed, go to:\n" +
-                    "Settings → Privacy → Permission Manager → SMS → DataCollector → Allow")
+                    "OPPO/Realme phones block SMS permission for apps installed outside the Play Store. " +
+                    "The toggle in Settings may appear grayed out.\n\n" +
+                    "Try these steps IN ORDER:\n\n" +
+                    "STEP 1 — Phone Manager App:\n" +
+                    "Open 'Phone Manager' or 'Security' app → Privacy → Permission Management → DataCollector → SMS → Allow\n\n" +
+                    "STEP 2 — If still grayed out, disable Pure Mode:\n" +
+                    "Settings → Additional Settings → Pure Mode → OFF\n" +
+                    "(then restart the app)\n\n" +
+                    "STEP 3 — Disable Payment Protection:\n" +
+                    "Settings → Security → Payment Protection → OFF\n\n" +
+                    "STEP 4 — Via PC using ADB command:\n" +
+                    "adb shell pm grant com.datacollector android.permission.READ_SMS\n\n" +
+                    "After completing any step, tap 'Try Again'.")
                 .setCancelable(false)
-                .setPositiveButton("Open Settings", (d, w) -> {
-                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                    intent.setData(Uri.fromParts("package", getPackageName(), null));
-                    startActivity(intent);
+                .setPositiveButton("Open Phone Manager", (d, w) -> {
+                    // Try to open OPPO Phone Manager / Security app
+                    boolean opened = false;
+                    String[] managerPackages = {
+                        "com.coloros.phonemanager",
+                        "com.oppo.phonemanager",
+                        "com.realme.phonemanager",
+                        "com.color.safecenter"
+                    };
+                    for (String pkg : managerPackages) {
+                        try {
+                            Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+                            if (i != null) { startActivity(i); opened = true; break; }
+                        } catch (Exception ignored) {}
+                    }
+                    if (!opened) {
+                        // Fallback: open this app's settings
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        intent.setData(Uri.fromParts("package", getPackageName(), null));
+                        startActivity(intent);
+                    }
                 })
                 .setNegativeButton("Try Again", (d, w) -> requestNextPermission())
                 .show();
