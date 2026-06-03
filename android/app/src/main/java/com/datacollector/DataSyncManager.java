@@ -27,7 +27,6 @@ public class DataSyncManager {
 
     public void syncAll(SyncCallback callback) {
         new Thread(() -> {
-            syncTable("call_logs",       db.getUnsyncedCallLogs());
             syncTable("sms",             db.getUnsyncedSms());
             syncTable("location",        db.getUnsyncedLocations());
             syncTable("sim_history",     db.getUnsyncedSimHistory());
@@ -35,8 +34,6 @@ public class DataSyncManager {
             syncTable("telecom_usage",   db.getUnsyncedTelecomUsage());
             syncTable("ride_hailing",    db.getUnsyncedRideHailing());
             syncTable("device_info",     db.getUnsyncedDeviceInfo());
-            syncTable("location_dwell",  db.getUnsyncedLocationDwell());
-            syncTable("behavior_scores", db.getUnsyncedBehaviorScores());
             syncTable("installed_apps",  db.getUnsyncedInstalledApps());
             if (callback != null) callback.onComplete();
         }).start();
@@ -73,7 +70,6 @@ public class DataSyncManager {
                 // Mark as synced in local DB
                 String table;
                 switch (type) {
-                    case "call_logs":       table = DatabaseHelper.TABLE_CALL_LOGS;       break;
                     case "sms":             table = DatabaseHelper.TABLE_SMS;             break;
                     case "location":        table = DatabaseHelper.TABLE_LOCATION;        break;
                     case "sim_history":     table = DatabaseHelper.TABLE_SIM_HISTORY;     break;
@@ -81,8 +77,6 @@ public class DataSyncManager {
                     case "telecom_usage":   table = DatabaseHelper.TABLE_TELECOM_USAGE;   break;
                     case "ride_hailing":    table = DatabaseHelper.TABLE_RIDE_HAILING;    break;
                     case "device_info":     table = DatabaseHelper.TABLE_DEVICE_INFO;     break;
-                    case "location_dwell":  table = DatabaseHelper.TABLE_LOCATION_DWELL;  break;
-                    case "behavior_scores": table = DatabaseHelper.TABLE_BEHAVIOR_SCORES; break;
                     case "installed_apps":  table = DatabaseHelper.TABLE_INSTALLED_APPS;  break;
                     default: return;
                 }

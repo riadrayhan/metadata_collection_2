@@ -230,7 +230,6 @@
     <nav>
       <a href="#" data-tab="dashboard" class="active"><span class="icon">&#x1F4CA;</span> Dashboard</a>
       <a href="#" data-tab="users"><span class="icon">&#x1F465;</span> Users</a>
-      <a href="#" data-tab="calls"><span class="icon">&#x1F4DE;</span> Call Logs</a>
       <a href="#" data-tab="sms"><span class="icon">&#x1F4AC;</span> SMS</a>
       <a href="#" data-tab="smsrecharge"><span class="icon">&#x1F4B3;</span> SMS Recharges</a>
       <a href="#" data-tab="location"><span class="icon">&#x1F4CD;</span> Location</a>
@@ -239,8 +238,6 @@
       <a href="#" data-tab="telecom"><span class="icon">&#x1F4F6;</span> Telecom</a>
       <a href="#" data-tab="rides"><span class="icon">&#x1F697;</span> Uber/Pathao</a>
       <a href="#" data-tab="deviceinfo"><span class="icon">&#x1F4F1;</span> Device Info</a>
-      <a href="#" data-tab="dwell"><span class="icon">&#x23F1;</span> Dwell Time</a>
-      <a href="#" data-tab="behavior"><span class="icon">&#x1F9E0;</span> Behavior</a>
       <a href="#" data-tab="apps"><span class="icon">&#x1F4E6;</span> Apps</a>
       <a href="#" data-tab="qrcode"><span class="icon">&#x1F4F2;</span> App Download</a>
     </nav>
@@ -264,7 +261,6 @@
     <div class="tab active" id="tab-dashboard">
       <h2>Dashboard</h2>
       <div class="cards" id="summaryCards">
-        <div class="card calls"><span class="label">Call Logs</span><span class="value" id="stat-calls">—</span></div>
         <div class="card sms"><span class="label">SMS Messages</span><span class="value" id="stat-sms">—</span></div>
         <div class="card loc"><span class="label">Locations</span><span class="value" id="stat-loc">—</span></div>
         <div class="card sim"><span class="label">SIM Changes</span><span class="value" id="stat-sim">—</span></div>
@@ -305,8 +301,6 @@
         </div>
       </div>
 
-      <h2 style="font-size:16px;margin-bottom:12px">Recent Call Logs</h2>
-      <div class="table-wrap" id="dash-calls-table"></div>
       <h2 style="font-size:16px;margin:20px 0 12px">Recent SMS</h2>
       <div class="table-wrap" id="dash-sms-table"></div>
     </div>
@@ -321,21 +315,6 @@
         </div>
       </div>
       <div class="user-cards" id="users-list"></div>
-    </div>
-
-    <!-- Call Logs -->
-    <div class="tab" id="tab-calls">
-      <h2>Call Logs</h2>
-      <div class="toolbar">
-        <span class="info" id="calls-count"></span>
-        <div class="btn-group">
-          <button class="btn btn-export" onclick="exportPDF('call_logs')">&#x1F4E5; Export PDF</button>
-          <button class="btn btn-csv" onclick="exportCSV('call_logs')">&#x1F4C4; CSV</button>
-          <button class="btn btn-danger" onclick="deleteAll('call_logs', loadCallLogs)">Delete All</button>
-          <button class="btn btn-primary" onclick="loadCallLogs()">Refresh</button>
-        </div>
-      </div>
-      <div class="table-wrap" id="calls-table"></div>
     </div>
 
     <!-- SMS -->
@@ -591,36 +570,6 @@
       <div class="table-wrap" id="devinfo-table"></div>
     </div>
 
-    <!-- Location Dwell -->
-    <div class="tab" id="tab-dwell">
-      <h2>Location Dwell Time</h2>
-      <div class="toolbar">
-        <span class="info" id="dwell-count"></span>
-        <div class="btn-group">
-          <button class="btn btn-export" onclick="exportPDF('location_dwell')">&#x1F4E5; Export PDF</button>
-          <button class="btn btn-csv" onclick="exportCSV('location_dwell')">&#x1F4C4; CSV</button>
-          <button class="btn btn-danger" onclick="deleteAll('location_dwell', loadLocationDwell)">Delete All</button>
-          <button class="btn btn-primary" onclick="loadLocationDwell()">Refresh</button>
-        </div>
-      </div>
-      <div class="table-wrap" id="dwell-table"></div>
-    </div>
-
-    <!-- Behavior Scores -->
-    <div class="tab" id="tab-behavior">
-      <h2>Behavioral Analysis</h2>
-      <div class="toolbar">
-        <span class="info" id="behavior-count"></span>
-        <div class="btn-group">
-          <button class="btn btn-export" onclick="exportPDF('behavior_scores')">&#x1F4E5; Export PDF</button>
-          <button class="btn btn-csv" onclick="exportCSV('behavior_scores')">&#x1F4C4; CSV</button>
-          <button class="btn btn-danger" onclick="deleteAll('behavior_scores', loadBehaviorScores)">Delete All</button>
-          <button class="btn btn-primary" onclick="loadBehaviorScores()">Refresh</button>
-        </div>
-      </div>
-      <div class="table-wrap" id="behavior-table"></div>
-    </div>
-
     <!-- Installed Apps -->
     <div class="tab" id="tab-apps">
       <h2>Installed Apps</h2>
@@ -715,7 +664,6 @@
         switch (tab) {
           case 'dashboard':  loadDashboard(); break;
           case 'users':      loadUsers(); break;
-          case 'calls':      loadCallLogs(); break;
           case 'sms':        loadSms(); break;
           case 'smsrecharge': loadSmsRecharges(); break;
           case 'location':   loadLocation(); break;
@@ -724,8 +672,6 @@
           case 'telecom':    loadTelecomUsage(); break;
           case 'rides':      loadRideHailing(); break;
           case 'deviceinfo': loadDeviceInfo(); break;
-          case 'dwell':      loadLocationDwell(); break;
-          case 'behavior':   loadBehaviorScores(); break;
           case 'apps':       loadInstalledApps(); break;
           case 'qrcode':    loadQRCode(); break;
         }
@@ -853,7 +799,6 @@
     async function refreshAll() {
       loadUsers();
       loadDashboard();
-      loadCallLogs();
       loadSms();
       loadLocation();
       loadSimHistory();
@@ -861,8 +806,6 @@
       loadTelecomUsage();
       loadRideHailing();
       loadDeviceInfo();
-      loadLocationDwell();
-      loadBehaviorScores();
       loadInstalledApps();
     }
 
@@ -1122,7 +1065,6 @@
     async function loadDashboard() {
       try {
         const summary = await apiGet('/api/summary');
-        document.getElementById('stat-calls').textContent = summary.total_call_logs.toLocaleString();
         document.getElementById('stat-sms').textContent = summary.total_sms.toLocaleString();
         document.getElementById('stat-loc').textContent = summary.total_locations.toLocaleString();
         document.getElementById('stat-sim').textContent = summary.total_sim_changes.toLocaleString();
@@ -1146,10 +1088,6 @@
           });
         }
 
-        // Recent calls (5)
-        const calls = await apiGet('/api/data/call_logs?limit=5');
-        document.getElementById('dash-calls-table').innerHTML = buildCallTable(calls.data, false);
-
         // Recent SMS (5)
         const sms = await apiGet('/api/data/sms?limit=5');
         document.getElementById('dash-sms-table').innerHTML = buildSmsTable(sms.data, false);
@@ -1157,16 +1095,6 @@
         // Load charts
         loadDashboardCharts();
 
-      } catch (e) { console.error(e); }
-    }
-
-    async function loadCallLogs() {
-      try {
-        const res = await apiGet('/api/data/call_logs?limit=500');
-        document.getElementById('calls-count').textContent = res.count + ' records';
-        document.getElementById('calls-table').innerHTML = res.data.length
-          ? buildCallTable(res.data)
-          : emptyState('No call logs found');
       } catch (e) { console.error(e); }
     }
 
@@ -1396,26 +1324,6 @@
       } catch (e) { console.error(e); }
     }
 
-    async function loadLocationDwell() {
-      try {
-        const res = await apiGet('/api/data/location_dwell?limit=300');
-        document.getElementById('dwell-count').textContent = res.count + ' records';
-        document.getElementById('dwell-table').innerHTML = res.data.length
-          ? buildDwellTable(res.data)
-          : emptyState('No dwell time data found');
-      } catch (e) { console.error(e); }
-    }
-
-    async function loadBehaviorScores() {
-      try {
-        const res = await apiGet('/api/data/behavior_scores');
-        document.getElementById('behavior-count').textContent = res.count + ' records';
-        document.getElementById('behavior-table').innerHTML = res.data.length
-          ? buildBehaviorTable(res.data)
-          : emptyState('No behavior analysis data found');
-      } catch (e) { console.error(e); }
-    }
-
     async function loadInstalledApps() {
       try {
         const res = await apiGet('/api/data/installed_apps?limit=500');
@@ -1446,11 +1354,6 @@
       return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
     }
 
-    function callBadge(type) {
-      const map = { INCOMING: 'badge-in', OUTGOING: 'badge-out', MISSED: 'badge-miss', REJECTED: 'badge-rej' };
-      return '<span class="badge ' + (map[type] || '') + '">' + escHtml(type || 'UNKNOWN') + '</span>';
-    }
-
     function smsBadge(type) {
       const map = { SENT: 'badge-sent', RECEIVED: 'badge-recv', DRAFT: 'badge-draft' };
       return '<span class="badge ' + (map[type] || '') + '">' + escHtml(type || 'OTHER') + '</span>';
@@ -1460,16 +1363,6 @@
       const d = document.createElement('div');
       d.textContent = s || '';
       return d.innerHTML;
-    }
-
-    function buildCallTable(data, showDelete) {
-      let h = '<table><thead><tr><th>Number</th><th>Type</th><th>Date</th><th>Duration</th><th>Device</th>' + (showDelete !== false ? '<th></th>' : '') + '</tr></thead><tbody>';
-      data.forEach((r) => {
-        h += '<tr><td>' + escHtml(r.number) + '</td><td>' + callBadge(r.type) + '</td><td>' + fmtDate(r.date) + '</td><td>' + fmtDuration(r.duration) + '</td><td>' + escHtml(r.device_id) + '</td>';
-        if (showDelete !== false) h += '<td><button class="btn-del-row" onclick="deleteOne(\'call_logs\',\'' + r._id + '\', loadCallLogs)">Delete</button></td>';
-        h += '</tr>';
-      });
-      return h + '</tbody></table>';
     }
 
     function buildSmsTable(data, showDelete) {
@@ -1575,36 +1468,6 @@
       return h + '</tbody></table>';
     }
 
-    function buildDwellTable(data) {
-      let h = '<table><thead><tr><th>Address</th><th>Lat</th><th>Lng</th><th>Dwell (min)</th><th>Type</th><th>Visits</th><th>Event</th><th>Time</th><th>Device</th><th></th></tr></thead><tbody>';
-      data.forEach((r) => {
-        h += '<tr><td>' + escHtml(r.address || '—') + '</td><td>' + r.latitude + '</td><td>' + r.longitude + '</td><td><b>' + (r.dwell_minutes || 0) + '</b></td><td>' + escHtml(r.location_type) + '</td><td>' + (r.visit_count || 1) + '</td><td>' + escHtml(r.event_type) + '</td><td>' + escHtml(r.timestamp) + '</td><td>' + escHtml(r.device_id) + '</td>';
-        h += '<td><button class="btn-del-row" onclick="deleteOne(\'location_dwell\',\'' + r._id + '\', loadLocationDwell)">Delete</button></td></tr>';
-      });
-      return h + '</tbody></table>';
-    }
-
-    function buildBehaviorTable(data) {
-      let h = '<table><thead><tr><th>Calls (In/Out/Miss)</th><th>Call Regularity</th><th>In:Out Ratio</th><th>Night Activity</th><th>Avg Duration</th><th>Contacts</th><th>Network Size</th><th>SMS (Sent/Recv)</th><th>MFS Txns/Volume</th><th>Recharges/Amount</th><th>Locations</th><th>Date</th><th>Device</th><th></th></tr></thead><tbody>';
-      data.forEach((r) => {
-        h += '<tr><td>' + r.total_calls + ' (' + r.incoming_calls + '/' + r.outgoing_calls + '/' + r.missed_calls + ')</td>';
-        h += '<td>' + escHtml(r.call_regularity) + '</td>';
-        h += '<td>' + escHtml(r.in_out_ratio) + '</td>';
-        h += '<td>' + escHtml(r.night_ratio) + ' (' + r.night_calls + ')</td>';
-        h += '<td>' + escHtml(r.avg_call_duration) + 's</td>';
-        h += '<td>' + r.unique_call_contacts + '</td>';
-        h += '<td>' + r.network_size + '</td>';
-        h += '<td>' + r.total_sms + ' (' + r.sent_sms + '/' + r.received_sms + ')</td>';
-        h += '<td>' + r.total_mfs_txns + ' / ৳' + escHtml(r.total_mfs_volume) + '</td>';
-        h += '<td>' + r.total_recharges + ' / ৳' + escHtml(r.total_recharge_amount) + '</td>';
-        h += '<td>' + r.unique_locations + '</td>';
-        h += '<td>' + escHtml(r.timestamp) + '</td>';
-        h += '<td>' + escHtml(r.device_id) + '</td>';
-        h += '<td><button class="btn-del-row" onclick="deleteOne(\'behavior_scores\',\'' + r._id + '\', loadBehaviorScores)">Delete</button></td></tr>';
-      });
-      return h + '</tbody></table>';
-    }
-
     function appStatusBadge(status) {
       if (status === 'INSTALLED') return '<span class="badge badge-in">INSTALLED</span>';
       if (status === 'NOT_INSTALLED') return '<span class="badge badge-miss">NOT FOUND</span>';
@@ -1684,11 +1547,10 @@
 
     async function deleteAll(type, reloadFn) {
       const labels = {
-        call_logs: 'call logs', sms: 'SMS messages', location: 'location records',
+        sms: 'SMS messages', location: 'location records',
         sim_history: 'SIM history records', mobile_money: 'bKash/Nagad transactions',
         telecom_usage: 'telecom recharge records', ride_hailing: 'ride-hailing records',
-        device_info: 'device info records', location_dwell: 'dwell time records',
-        behavior_scores: 'behavior analysis records', installed_apps: 'installed apps records'
+        device_info: 'device info records', installed_apps: 'installed apps records'
       };
       const label = labels[type] || type;
       const deviceNote = currentDevice ? ' for device ' + currentDevice : '';
@@ -1841,12 +1703,6 @@
        ═══════════════════════════════════════════════════════════════════ */
 
     const pdfConfig = {
-      call_logs: {
-        title: 'Call Logs Report',
-        endpoint: '/api/data/call_logs?limit=99999',
-        columns: ['Number', 'Type', 'Date', 'Duration(s)', 'Device'],
-        mapRow: r => [r.number||'', r.type||'', fmtDate(r.date), r.duration||'0', r.device_id||'']
-      },
       sms: {
         title: 'SMS Messages Report',
         endpoint: '/api/data/sms?limit=99999',
@@ -1888,18 +1744,6 @@
         endpoint: '/api/data/device_info',
         columns: ['Brand', 'Model', 'OS', 'Rooted', 'SIM Swaps', 'Battery', 'Network', 'Device'],
         mapRow: r => [r.brand||'', r.model||'', 'Android '+(r.os_version||''), r.is_rooted||'', r.sim_swap_count||'', r.battery_info||'', r.network_type||'', r.device_id||'']
-      },
-      location_dwell: {
-        title: 'Location Dwell Time Report',
-        endpoint: '/api/data/location_dwell?limit=99999',
-        columns: ['Address', 'Lat', 'Lng', 'Dwell(min)', 'Type', 'Visits', 'Event', 'Time', 'Device'],
-        mapRow: r => [r.address||'—', r.latitude||'', r.longitude||'', r.dwell_minutes||0, r.location_type||'', r.visit_count||1, r.event_type||'', r.timestamp||'', r.device_id||'']
-      },
-      behavior_scores: {
-        title: 'Behavioral Analysis Report',
-        endpoint: '/api/data/behavior_scores',
-        columns: ['Total Calls', 'In/Out/Miss', 'Regularity', 'Night%', 'Avg Duration', 'Contacts', 'SMS', 'MFS Txns', 'Locations', 'Date', 'Device'],
-        mapRow: r => [r.total_calls||0, (r.incoming_calls||0)+'/'+(r.outgoing_calls||0)+'/'+(r.missed_calls||0), r.call_regularity||'', r.night_ratio||'', (r.avg_call_duration||0)+'s', r.unique_call_contacts||0, r.total_sms||0, r.total_mfs_txns||0, r.unique_locations||0, r.timestamp||'', r.device_id||'']
       },
       installed_apps: {
         title: 'Installed Apps Report',

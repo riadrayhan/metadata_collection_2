@@ -1,0 +1,279 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#3F51B5"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Data Collector App"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Terms &amp; Conditions â€” Privacy Policy"
+            android:textSize="14sp"
+            android:textColor="#C5CAE9"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+    <!-- Scrollable T&C body -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#1A237E"
+                android:text="Please read the following terms carefully before using this app."
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#212121"
+                android:lineSpacingExtra="4dp"
+                android:text="This app collects the data listed below from your device. The purpose of each data type is clearly stated. Data collection begins only after you explicitly agree to these terms."
+                android:layout_marginBottom="16dp" />
+
+            <!-- Section 1 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="1. SMS Messages"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="SMS messages in your inbox will be read. Messages related to bKash, Nagad, Rocket, telecom recharges, and ride-hailing services (Uber/Pathao) will be analyzed to extract financial transaction details."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 2 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="2. Location Information"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="Your current GPS or network-based location (latitude, longitude, address) will be collected. This is used for geographical activity analysis."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 3 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="3. SIM Card History"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="SIM card details (operator, slot, ICCID, country code) and SIM change history will be recorded to verify device identity continuity."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 4 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="4. Mobile Banking Transactions (bKash / Nagad / Rocket)"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="Mobile financial service transaction details (amount, balance, transaction type, transaction ID, counter party) will be extracted from SMS messages."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 5 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="5. Telecom Recharge &amp; Balance Information"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="Recharge, data pack, and emergency balance information from operators such as Grameenphone, Robi, Banglalink, and Teletalk will be extracted from SMS messages."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 6 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="6. Ride-Hailing Information (Uber / Pathao)"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="Trip details (provider, fare amount, trip description) will be extracted from ride-hailing SMS confirmations."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 7 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="7. Device Information"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="Device brand, model, Android version, root status, battery info, network type, RAM, and storage information will be collected."
+                android:layout_marginBottom="14dp" />
+
+            <!-- Section 8 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#283593"
+                android:text="8. Installed Applications"
+                android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="The list of apps installed on your device (name, package name, category, install date) will be collected."
+                android:layout_marginBottom="20dp" />
+
+            <!-- Data storage notice -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginBottom="14dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#B71C1C"
+                android:text="Data Storage &amp; Usage"
+                android:layout_marginBottom="6dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#424242"
+                android:lineSpacingExtra="3dp"
+                android:text="â€¢ All collected data is stored on a secure server.\nâ€¢ Data will only be accessed by authorized personnel.\nâ€¢ Your data will NOT be shared with any third party.\nâ€¢ By using this app you are voluntarily providing consent for data collection.\nâ€¢ You may uninstall this app at any time to stop data collection."
+                android:layout_marginBottom="20dp" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Footer: checkbox + buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#F5F5F5"
+        android:padding="16dp"
+        android:elevation="8dp">
+
+        <CheckBox
+            android:id="@+id/chkAgree"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="I have read the terms above and I consent to data collection."
+            android:textSize="13sp"
+            android:textColor="#212121"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/btnDecline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Decline"
+                android:textAllCaps="false"
+                android:backgroundTint="#9E9E9E"
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="10dp" />
+
+            <Button
+                android:id="@+id/btnAccept"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="I Agree â€” Continue"
+                android:textAllCaps="false"
+                android:backgroundTint="#3F51B5"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

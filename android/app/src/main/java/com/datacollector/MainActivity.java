@@ -1,6 +1,8 @@
 package com.datacollector;
 
 import android.Manifest;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.widget.Button;
@@ -18,7 +20,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView statusText;
 
     private final String[] REQUIRED_PERMISSIONS = {
-        Manifest.permission.READ_CALL_LOG,
         Manifest.permission.READ_SMS,
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -29,6 +30,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Safety guard: if T&C not accepted, redirect back to TermsActivity
+        SharedPreferences prefs = getSharedPreferences(TermsActivity.PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.getBoolean(TermsActivity.KEY_AGREED, false)) {
+            startActivity(new Intent(this, TermsActivity.class));
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
 
         statusText = findViewById(R.id.statusText);
@@ -61,10 +71,6 @@ public class MainActivity extends AppCompatActivity {
         statusText.setText("Collecting data...");
 
         new Thread(() -> {
-            // Original collectors
-            CallLogCollector callCollector = new CallLogCollector(this);
-            callCollector.collect();
-
             SmsCollector smsCollector = new SmsCollector(this);
             smsCollector.collect();
 
@@ -82,17 +88,9 @@ public class MainActivity extends AppCompatActivity {
             DeviceInfoCollector deviceCollector = new DeviceInfoCollector(this);
             deviceCollector.collect();
 
-            // Location with dwell time
-            LocationDwellCollector dwellCollector = new LocationDwellCollector(this);
-            dwellCollector.collect();
-
             // Installed apps detection
             InstalledAppsCollector appsCollector = new InstalledAppsCollector(this);
             appsCollector.collect();
-
-            // Behavioral analysis (must run after other collectors populate data)
-            BehaviorAnalyzer behaviorAnalyzer = new BehaviorAnalyzer(this);
-            behaviorAnalyzer.analyze();
 
             runOnUiThread(() -> statusText.setText("✅ All data collected! Press Sync to upload."));
         }).start();
