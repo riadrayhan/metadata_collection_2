@@ -1,6 +1,7 @@
 package com.datacollector;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -11,8 +12,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -22,24 +21,41 @@ public class MainActivity extends AppCompatActivity {
     private static final int COLLECT_STEPS = 6;
     private static final int TOTAL_STEPS   = COLLECT_STEPS + DataSyncManager.SYNC_TABLE_COUNT;
 
-    private TextView   statusText;
-    private TextView   progressPercent;
+    private TextView    statusText;
+    private TextView    progressPercent;
     private ProgressBar progressBar;
-    private int        stepsCompleted = 0;
+    private int         stepsCompleted = 0;
+    private int         currentPermIndex = 0;
 
-    private final String[] REQUIRED_PERMISSIONS = {
-        Manifest.permission.READ_SMS,
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.READ_PHONE_STATE,
-        Manifest.permission.INTERNET
+    // Each permission with its title and explanation shown to the user
+    private static final String[][] PERM_INFO = {
+        {
+            Manifest.permission.READ_SMS,
+            "SMS Messages",
+            "This app needs to read your SMS messages.\n\nPurpose: Extract financial transactions from bKash, Nagad, Rocket, telecom recharges, and ride-hailing (Uber/Pathao) SMS messages."
+        },
+        {
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            "Precise Location (GPS)",
+            "This app needs access to your precise GPS location.\n\nPurpose: Collect your current location coordinates for geographical activity analysis."
+        },
+        {
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            "Approximate Location (Network)",
+            "This app needs access to your approximate network-based location.\n\nPurpose: Used as a fallback when GPS is unavailable to estimate your general location."
+        },
+        {
+            Manifest.permission.READ_PHONE_STATE,
+            "Phone & SIM Information",
+            "This app needs to read your phone and SIM card details.\n\nPurpose: Record SIM operator, ICCID, country code and detect SIM changes to verify device identity."
+        },
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Safety guard: if T&C not accepted, redirect back to TermsActivity
+        // Safety guard: if T&C not accepted, redirect to TermsActivity
         SharedPreferences prefs = getSharedPreferences(TermsActivity.PREFS_NAME, MODE_PRIVATE);
         if (!prefs.getBoolean(TermsActivity.KEY_AGREED, false)) {
             startActivity(new Intent(this, TermsActivity.class));
@@ -52,14 +68,57 @@ public class MainActivity extends AppCompatActivity {
         progressPercent = findViewById(R.id.progressPercent);
         progressBar     = findViewById(R.id.progressBar);
         stepsCompleted  = 0;
-        updateProgress(0, "Starting…");
+        currentPermIndex = 0;
+        updateProgress(0, "Preparing...");
 
-        // Auto-start: request permissions or immediately collect+sync
-        if (allPermissionsGranted()) {
+        // Start one-by-one permission requests
+        requestNextPermission();
+    }
+
+    /** Show explanation dialog for the next ungranted permission, then request it */
+    private void requestNextPermission() {
+        // Skip already-granted permissions
+        while (currentPermIndex < PERM_INFO.length) {
+            String perm = PERM_INFO[currentPermIndex][0];
+            if (ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED) {
+                currentPermIndex++;
+            } else {
+                break;
+            }
+        }
+
+        if (currentPermIndex >= PERM_INFO.length) {
+            // All permissions handled — start collecting
             startCollectionAndSync();
-        } else {
-            statusText.setText("Requesting permissions…");
-            requestRequiredPermissions();
+            return;
+        }
+
+        String[] info    = PERM_INFO[currentPermIndex];
+        String   permNum = (currentPermIndex + 1) + "/" + PERM_INFO.length;
+
+        updateProgress(0, "Permission " + permNum + ": " + info[1]);
+
+        new AlertDialog.Builder(this)
+            .setTitle("Permission " + permNum + ": " + info[1])
+            .setMessage(info[2])
+            .setCancelable(false)
+            .setPositiveButton("Allow", (d, w) ->
+                ActivityCompat.requestPermissions(
+                    this, new String[]{ info[0] }, PERMISSION_REQUEST_CODE))
+            .setNegativeButton("Skip", (d, w) -> {
+                currentPermIndex++;
+                requestNextPermission();
+            })
+            .show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+            String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            currentPermIndex++;
+            requestNextPermission();
         }
     }
 
@@ -78,91 +137,50 @@ public class MainActivity extends AppCompatActivity {
 
         new Thread(() -> {
             // --- Collection phase (6 steps) ---
-            updateProgress(0, "Collecting SMS…");
+            updateProgress(0, "Collecting SMS...");
             new SmsCollector(this).collect();
-            updateProgress(++stepsCompleted, "Collecting location…");
+            updateProgress(++stepsCompleted, "Collecting location...");
 
             new LocationCollector(this).collect();
-            updateProgress(++stepsCompleted, "Checking SIM…");
+            updateProgress(++stepsCompleted, "Checking SIM...");
 
             new SimChangeDetector(this).checkAndRecordSimChange();
-            updateProgress(++stepsCompleted, "Analysing SMS data…");
+            updateProgress(++stepsCompleted, "Analysing SMS data...");
 
             new SmsAnalyzer(this).analyze();
-            updateProgress(++stepsCompleted, "Collecting device info…");
+            updateProgress(++stepsCompleted, "Collecting device info...");
 
             new DeviceInfoCollector(this).collect();
-            updateProgress(++stepsCompleted, "Collecting installed apps…");
+            updateProgress(++stepsCompleted, "Collecting installed apps...");
 
             new InstalledAppsCollector(this).collect();
-            updateProgress(++stepsCompleted, "Syncing to server…");
+            updateProgress(++stepsCompleted, "Syncing to server...");
 
-            // --- Sync phase (8 steps via ProgressCallback) ---
+            // --- Sync phase (8 steps) ---
             String[] tableLabels = {
-                "Syncing SMS…",
-                "Syncing location…",
-                "Syncing SIM history…",
-                "Syncing mobile money…",
-                "Syncing telecom usage…",
-                "Syncing ride-hailing…",
-                "Syncing device info…",
-                "Syncing installed apps…",
+                "Syncing SMS...",
+                "Syncing location...",
+                "Syncing SIM history...",
+                "Syncing mobile money...",
+                "Syncing telecom usage...",
+                "Syncing ride-hailing...",
+                "Syncing device info...",
+                "Syncing installed apps...",
             };
 
             new DataSyncManager(this).syncAll(
-                // onComplete
                 () -> runOnUiThread(() -> {
                     progressBar.setProgress(100);
                     progressPercent.setText("100%");
-                    statusText.setText("✅ All data synced!");
+                    statusText.setText("All data synced!");
                     Toast.makeText(this, "Sync complete!", Toast.LENGTH_SHORT).show();
                 }),
-                // onProgress — fires after each table
                 (done, total) -> {
                     String label = (done - 1 < tableLabels.length)
-                        ? tableLabels[done - 1] : "Syncing…";
+                        ? tableLabels[done - 1] : "Syncing...";
                     updateProgress(COLLECT_STEPS + done, label);
                 }
             );
         }).start();
-    }
-
-    private boolean allPermissionsGranted() {
-        for (String permission : REQUIRED_PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(this, permission)
-                    != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void requestRequiredPermissions() {
-        List<String> needed = new ArrayList<>();
-        for (String permission : REQUIRED_PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(this, permission)
-                    != PackageManager.PERMISSION_GRANTED) {
-                needed.add(permission);
-            }
-        }
-        ActivityCompat.requestPermissions(this,
-            needed.toArray(new String[0]), PERMISSION_REQUEST_CODE);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-            String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (allPermissionsGranted()) {
-                // All granted — auto collect and sync
-                startCollectionAndSync();
-            } else {
-                statusText.setText("⚠️ Permissions required to continue.");
-                Toast.makeText(this,
-                    "Please grant all permissions for the app to work.",
-                    Toast.LENGTH_LONG).show();
-            }
-        }
     }
 }
