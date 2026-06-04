@@ -24,7 +24,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 const VALID_TYPES = [
   'call_logs', 'sms', 'location', 'sim_history',
   'mobile_money', 'telecom_usage', 'ride_hailing',
-  'device_info', 'location_dwell', 'behavior_scores', 'installed_apps'
+  'device_info', 'location_dwell', 'behavior_scores', 'installed_apps',
+  'photo_locations'
 ];
 
 // ─── MongoDB Connection ───────────────────────────────────────────────────

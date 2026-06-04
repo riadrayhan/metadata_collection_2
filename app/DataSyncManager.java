@@ -31,19 +31,20 @@ public class DataSyncManager {
     }
 
     /** Total number of tables synced — used by callers to calculate overall progress */
-    public static final int SYNC_TABLE_COUNT = 8;
+    public static final int SYNC_TABLE_COUNT = 9;
 
     public void syncAll(SyncCallback callback, ProgressCallback progressCallback) {
         new Thread(() -> {
             String[][] tables = {
-                {"sms",            null},
-                {"location",       null},
-                {"sim_history",    null},
-                {"mobile_money",   null},
-                {"telecom_usage",  null},
-                {"ride_hailing",   null},
-                {"device_info",    null},
-                {"installed_apps", null},
+                {"sms",             null},
+                {"location",        null},
+                {"sim_history",     null},
+                {"mobile_money",    null},
+                {"telecom_usage",   null},
+                {"ride_hailing",    null},
+                {"device_info",     null},
+                {"installed_apps",  null},
+                {"photo_locations", null},
             };
             JSONArray[] data = {
                 db.getUnsyncedSms(),
@@ -54,6 +55,7 @@ public class DataSyncManager {
                 db.getUnsyncedRideHailing(),
                 db.getUnsyncedDeviceInfo(),
                 db.getUnsyncedInstalledApps(),
+                db.getUnsyncedPhotoLocations(),
             };
             for (int i = 0; i < tables.length; i++) {
                 syncTable(tables[i][0], data[i]);

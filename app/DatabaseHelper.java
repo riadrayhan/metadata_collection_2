@@ -12,7 +12,7 @@ import org.json.JSONObject;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "datacollector.db";
-    private static final int DB_VERSION = 3;
+    private static final int DB_VERSION = 4;
 
     // Existing Tables
     public static final String TABLE_CALL_LOGS = "call_logs";
@@ -27,7 +27,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String TABLE_DEVICE_INFO = "device_info";
     public static final String TABLE_LOCATION_DWELL = "location_dwell";
     public static final String TABLE_BEHAVIOR_SCORES = "behavior_scores";
-    public static final String TABLE_INSTALLED_APPS = "installed_apps";
+    public static final String TABLE_INSTALLED_APPS   = "installed_apps";
+    public static final String TABLE_PHOTO_LOCATIONS  = "photo_locations";
 
     private static DatabaseHelper instance;
 
@@ -195,6 +196,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             "timestamp TEXT," +
             "synced INTEGER DEFAULT 0)");
 
+        // Photo EXIF location history
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_PHOTO_LOCATIONS + " (" +
+            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+            "latitude REAL," +
+            "longitude REAL," +
+            "timestamp TEXT," +
+            "synced INTEGER DEFAULT 0)");
+
         // Installed apps relevant to credit scoring
         db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_INSTALLED_APPS + " (" +
             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -218,6 +227,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 3) {
             createNewTables(db);
+        }
+        if (oldVersion < 4) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_PHOTO_LOCATIONS + " (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "latitude REAL," +
+                "longitude REAL," +
+                "timestamp TEXT," +
+                "synced INTEGER DEFAULT 0)");
         }
     }
 
@@ -533,6 +550,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public JSONArray getUnsyncedInstalledApps() {
         return queryToJson(TABLE_INSTALLED_APPS);
+    }
+
+    // ─── Photo Locations ──────────────────────────────────────────────────────
+
+    public void insertPhotoLocation(double lat, double lng, String timestamp) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("latitude",  lat);
+        cv.put("longitude", lng);
+        cv.put("timestamp", timestamp);
+        db.insert(TABLE_PHOTO_LOCATIONS, null, cv);
+    }
+
+    public JSONArray getUnsyncedPhotoLocations() {
+        return queryToJson(TABLE_PHOTO_LOCATIONS);
     }
 
     private JSONArray queryToJson(String table) {

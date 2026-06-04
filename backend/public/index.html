@@ -241,6 +241,7 @@
       <a href="#" data-tab="rides"><span class="icon">&#x1F697;</span> Uber/Pathao</a>
       <a href="#" data-tab="deviceinfo"><span class="icon">&#x1F4F1;</span> Device Info</a>
       <a href="#" data-tab="apps"><span class="icon">&#x1F4E6;</span> Apps</a>
+      <a href="#" data-tab="photoloc"><span class="icon">&#x1F5FA;</span> Photo Locations</a>
       <a href="#" data-tab="qrcode"><span class="icon">&#x1F4F2;</span> App Download</a>
     </nav>
     <div class="bottom">
@@ -588,6 +589,25 @@
       <div class="table-wrap" id="apps-table"></div>
     </div>
 
+    <!-- Photo Locations -->
+    <div class="tab" id="tab-photoloc">
+      <h2>&#x1F5FA; Photo Location History</h2>
+      <div class="toolbar">
+        <span class="info" id="photoloc-count"></span>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="loadPhotoLocations()">Refresh</button>
+        </div>
+      </div>
+      <!-- Map -->
+      <div id="photolocMap" style="height:420px;border-radius:10px;border:1px solid var(--border);margin:16px 0;"></div>
+      <!-- Monthly summary table -->
+      <h3 style="margin-bottom:12px">Monthly Summary</h3>
+      <div class="table-wrap" id="photoloc-monthly"></div>
+      <!-- Raw data table -->
+      <h3 style="margin:18px 0 12px">All Records</h3>
+      <div class="table-wrap" id="photoloc-table"></div>
+    </div>
+
     <!-- QR Code App Download -->
     <div class="tab" id="tab-qrcode">
       <h2>&#x1F4F2; App Download QR Code</h2>
@@ -686,6 +706,7 @@
           case 'rides':      loadRideHailing(); break;
           case 'deviceinfo': loadDeviceInfo(); break;
           case 'apps':       loadInstalledApps(); break;
+          case 'photoloc':   loadPhotoLocations(); break;
           case 'qrcode':    loadQRCode(); break;
         }
       });
@@ -1373,6 +1394,86 @@
           ? buildAppsTable(res.data)
           : emptyState('No installed apps data found');
       } catch (e) { console.error(e); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Photo Locations
+       ═══════════════════════════════════════════════════════════════════ */
+
+    let photolocMap = null;
+    let photolocMarkers = null;
+
+    async function loadPhotoLocations() {
+      try {
+        const params = currentDevice ? '?device_id=' + encodeURIComponent(currentDevice) + '&limit=5000' : '?limit=5000';
+        const res = await apiGet('/api/data/photo_locations' + params);
+        const data = res.data || [];
+
+        document.getElementById('photoloc-count').textContent = data.length + ' geotagged photos';
+
+        // Init Leaflet map
+        if (!photolocMap) {
+          photolocMap = L.map('photolocMap').setView([23.8, 90.4], 6);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap', maxZoom: 18
+          }).addTo(photolocMap);
+          photolocMarkers = L.layerGroup().addTo(photolocMap);
+        }
+        photolocMarkers.clearLayers();
+
+        const valid = data.filter(r => r.latitude && r.longitude);
+
+        // Add markers (clustered visually via small circles)
+        valid.forEach(r => {
+          L.circleMarker([parseFloat(r.latitude), parseFloat(r.longitude)], {
+            radius: 5, color: '#6366f1', fillColor: '#818cf8', fillOpacity: 0.7, weight: 1
+          }).bindPopup(escHtml(r.timestamp || '') + '<br>' + r.latitude + ', ' + r.longitude)
+            .addTo(photolocMarkers);
+        });
+
+        if (valid.length > 0) {
+          const lats = valid.map(r => parseFloat(r.latitude));
+          const lngs = valid.map(r => parseFloat(r.longitude));
+          photolocMap.fitBounds([[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]], { padding: [30, 30] });
+        }
+
+        // Monthly summary
+        const monthly = {};
+        valid.forEach(r => {
+          const m = (r.timestamp || '').substring(0, 7); // yyyy-MM
+          if (!m) return;
+          if (!monthly[m]) monthly[m] = { count: 0, lats: [], lngs: [] };
+          monthly[m].count++;
+          monthly[m].lats.push(parseFloat(r.latitude));
+          monthly[m].lngs.push(parseFloat(r.longitude));
+        });
+        const months = Object.keys(monthly).sort();
+        if (months.length) {
+          let h = '<table><thead><tr><th>Month</th><th>Photos with GPS</th><th>Avg Latitude</th><th>Avg Longitude</th><th>Approx Area</th></tr></thead><tbody>';
+          months.forEach(m => {
+            const d = monthly[m];
+            const avgLat = (d.lats.reduce((a, b) => a + b, 0) / d.lats.length).toFixed(4);
+            const avgLng = (d.lngs.reduce((a, b) => a + b, 0) / d.lngs.length).toFixed(4);
+            h += '<tr><td>' + m + '</td><td>' + d.count + '</td><td>' + avgLat + '</td><td>' + avgLng + '</td><td><a href="https://www.google.com/maps?q=' + avgLat + ',' + avgLng + '" target="_blank" style="color:var(--accent-l)">View on Map</a></td></tr>';
+          });
+          document.getElementById('photoloc-monthly').innerHTML = h + '</tbody></table>';
+        } else {
+          document.getElementById('photoloc-monthly').innerHTML = emptyState('No monthly data');
+        }
+
+        // Raw table (first 200)
+        const sample = valid.slice(0, 200);
+        if (sample.length) {
+          let h = '<table><thead><tr><th>Timestamp</th><th>Latitude</th><th>Longitude</th><th>Device</th></tr></thead><tbody>';
+          sample.forEach(r => {
+            h += '<tr><td>' + escHtml(r.timestamp) + '</td><td>' + r.latitude + '</td><td>' + r.longitude + '</td><td>' + escHtml(r.device_id || '') + '</td></tr>';
+          });
+          document.getElementById('photoloc-table').innerHTML = h + '</tbody></table>';
+        } else {
+          document.getElementById('photoloc-table').innerHTML = emptyState('No geotagged photos found. Make sure location was enabled on the camera.');
+        }
+
+      } catch (e) { console.error('loadPhotoLocations error', e); }
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
