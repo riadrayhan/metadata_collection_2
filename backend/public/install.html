@@ -274,8 +274,8 @@
 
   <!-- Sticky bottom bar — always visible while user scrolls -->
   <div class="sticky-pp" id="stickyPP">
-    <span>&#x1F6D1; Play Protect blocking install?</span>
-    <button onclick="openPlayProtect()">Disable Now</button>
+    <span>&#x1F6D1; App blocked? Tap &ldquo;Got it&rdquo; then disable Play Protect</span>
+    <button onclick="openPlayProtect()">Open Play Protect</button>
     <button class="close-btn" onclick="document.getElementById('stickyPP').style.display='none'">&times;</button>
   </div>
 
@@ -283,12 +283,13 @@
 
     <!-- PLAY PROTECT BLOCKING BANNER (most common issue — shown first) -->
     <div class="pp-banner" style="margin-top:8px;">
-      <h3>&#x1F6D1; Google Play Protect blocking the install?</h3>
+      <h3>&#x1F6D1; Google showing &ldquo;App blocked to protect your device&rdquo;?</h3>
       <p>
-        When you tap <b>Install</b>, Google may show a red screen:<br>
-        <b>"App blocked"</b> or <b>"Harmful app blocked"</b>.<br><br>
-        &#x2714; Tap <b>"More details"</b> &rarr; then tap <b>"Install anyway"</b>.<br>
-        &#x2714; Or disable Play Protect first using the button below &mdash; then install again.
+        When you tap <b>Install</b>, Google may show a screen:<br>
+        <b>"App blocked to protect your device"</b> with only a <b>"Got it"</b> button.<br><br>
+        &#x2714; Tap <b>"Got it"</b> &mdash; it will <b>automatically open Play Protect settings</b>.<br>
+        &#x2714; Turn <b>OFF</b> &ldquo;Scan apps with Play Protect&rdquo; &rarr; tap <b>Turn off</b> to confirm.<br>
+        &#x2714; Go back to your Downloads and tap the APK to install again.
       </p>
       <div class="pp-btn-row">
         <button class="pp-btn pp-btn-primary" onclick="openPlayProtect()">
@@ -471,10 +472,10 @@
 
     <!-- BLOCKED DURING INSTALL tip -->
     <div class="block-tip">
-      &#x1F6D1; <b>If Google blocks the install:</b><br>
-      Play Protect may show a red screen saying <b>"App blocked"</b>.<br>
-      &rarr; Tap <b>More details</b> &rarr; tap <b>Install anyway</b>.<br>
-      Or go back and complete <b>Step 2</b> (disable Play Protect) first.
+      &#x1F6D1; <b>If Google shows "App blocked to protect your device":</b><br>
+      You will only see a <b>"Got it"</b> button &mdash; tap it.<br>
+      &rarr; It will <b>automatically open Play Protect settings</b>.<br>
+      Turn <b>OFF</b> &ldquo;Scan apps with Play Protect&rdquo; &rarr; tap <b>Turn off</b> &rarr; go back and install again.
       <div class="pp-btn-row" style="margin-top:12px;">
         <button class="pp-btn pp-btn-primary" style="font-size:12px;padding:9px 14px;"
                 onclick="openPlayProtect()">
