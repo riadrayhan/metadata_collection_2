@@ -469,11 +469,20 @@
       <div class="toolbar">
         <span class="info" id="mfs-count"></span>
         <div class="btn-group">
+          <button class="btn" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid #10b981" onclick="showAmountAnalysis()">&#x1F4CA; Amount Analysis</button>
           <button class="btn btn-export" onclick="exportPDF('mobile_money')">&#x1F4E5; Export PDF</button>
           <button class="btn btn-csv" onclick="exportCSV('mobile_money')">&#x1F4C4; CSV</button>
           <button class="btn btn-danger" onclick="deleteAll('mobile_money', loadMobileMoney)">Delete All</button>
           <button class="btn btn-primary" onclick="loadMobileMoney()">Refresh</button>
         </div>
+      </div>
+      <!-- Amount Analysis Result Panel -->
+      <div id="mfs-analysis-panel" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 style="margin:0">&#x1F4CA; Financial Amount Analysis</h3>
+          <button onclick="document.getElementById('mfs-analysis-panel').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">&times;</button>
+        </div>
+        <div id="mfs-analysis-content"></div>
       </div>
       <div class="table-wrap" id="mfs-table"></div>
     </div>
@@ -1345,13 +1354,167 @@
 
     async function loadMobileMoney() {
       try {
-        const res = await apiGet('/api/data/mobile_money?limit=500');
+        const res = await apiGet('/api/data/mobile_money?limit=5000');
         mfsAllData = res.data || [];
         document.getElementById('mfs-count').textContent = res.count + ' records';
         document.getElementById('mfs-table').innerHTML = mfsAllData.length
           ? buildMfsTable(mfsAllData)
           : emptyState('No bKash/Nagad transactions found');
       } catch (e) { console.error(e); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Amount Analysis
+       ═══════════════════════════════════════════════════════════════════ */
+
+    function showAmountAnalysis() {
+      const data = (mfsAllData || []).filter(r => {
+        if (!currentDevice) return true;
+        return r.device_id === currentDevice;
+      });
+
+      if (!data.length) {
+        alert('No bKash/Nagad data loaded. Click Refresh first.');
+        return;
+      }
+
+      // Categories
+      const OUTGOING = ['CASH_OUT', 'SEND_MONEY', 'PAYMENT', 'BILL_PAY', 'MERCHANT_PAYMENT', 'MOBILE_RECHARGE'];
+      const INCOMING = ['CASH_IN', 'RECEIVE_MONEY'];
+
+      function parseAmt(r) {
+        if (!r.amount) return 0;
+        return parseFloat(String(r.amount).replace(/,/g, '')) || 0;
+      }
+
+      // Build monthly buckets
+      const monthly = {};
+      data.forEach(r => {
+        const m = (r.timestamp || '').substring(0, 7);
+        if (!m || m.length < 7) return;
+        if (!monthly[m]) monthly[m] = { cash_in: 0, cash_out: 0, send_money: 0, receive_money: 0, payment: 0, other_out: 0, other_in: 0, txns: 0 };
+        const amt = parseAmt(r);
+        const t = (r.txn_type || '').toUpperCase();
+        monthly[m].txns++;
+        if (t === 'CASH_IN')              monthly[m].cash_in      += amt;
+        else if (t === 'CASH_OUT')        monthly[m].cash_out     += amt;
+        else if (t === 'SEND_MONEY')      monthly[m].send_money   += amt;
+        else if (t === 'RECEIVE_MONEY')   monthly[m].receive_money+= amt;
+        else if (t === 'PAYMENT' || t === 'BILL_PAY' || t === 'MERCHANT_PAYMENT' || t === 'MOBILE_RECHARGE')
+                                           monthly[m].payment      += amt;
+        else if (OUTGOING.includes(t))    monthly[m].other_out    += amt;
+        else if (INCOMING.includes(t))    monthly[m].other_in     += amt;
+      });
+
+      const months = Object.keys(monthly).sort();
+      const n = months.length;
+
+      // All-time totals
+      let tot_cash_in = 0, tot_cash_out = 0, tot_send = 0, tot_receive = 0, tot_payment = 0;
+      months.forEach(m => {
+        tot_cash_in  += monthly[m].cash_in;
+        tot_cash_out += monthly[m].cash_out;
+        tot_send     += monthly[m].send_money;
+        tot_receive  += monthly[m].receive_money;
+        tot_payment  += monthly[m].payment;
+      });
+      const tot_out = tot_cash_out + tot_send + tot_payment;
+      const tot_in  = tot_cash_in  + tot_receive;
+      const grand   = tot_out + tot_in;
+
+      function tk(v) { return '৳' + Math.round(v).toLocaleString('en-BD'); }
+      function avg(v) { return n > 0 ? Math.round(v / n) : 0; }
+
+      // Summary cards
+      let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:22px">';
+      const cards = [
+        { label: 'Total Cash In',    val: tk(tot_cash_in),   color: '#10b981' },
+        { label: 'Total Cash Out',   val: tk(tot_cash_out),  color: '#ef4444' },
+        { label: 'Total Send Money', val: tk(tot_send),      color: '#f59e0b' },
+        { label: 'Total Received',   val: tk(tot_receive),   color: '#3b82f6' },
+        { label: 'Total Payments',   val: tk(tot_payment),   color: '#8b5cf6' },
+        { label: 'Total Outflow',    val: tk(tot_out),       color: '#ef4444', bold: true },
+        { label: 'Total Inflow',     val: tk(tot_in),        color: '#10b981', bold: true },
+        { label: 'Grand Total',      val: tk(grand),         color: '#6366f1', bold: true },
+      ];
+      cards.forEach(c => {
+        html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center">'
+          + '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + c.label + '</div>'
+          + '<div style="font-size:' + (c.bold ? '20px' : '18px') + ';font-weight:700;color:' + c.color + '">' + c.val + '</div>'
+          + '</div>';
+      });
+      html += '</div>';
+
+      // Monthly averages
+      html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:22px">'
+        + '<h4 style="margin:0 0 12px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.5px">Monthly Averages (' + n + ' months)</h4>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">';
+      const avgs = [
+        { label: 'Avg Cash In/month',    val: tk(avg(tot_cash_in)),  color: '#10b981' },
+        { label: 'Avg Cash Out/month',   val: tk(avg(tot_cash_out)), color: '#ef4444' },
+        { label: 'Avg Send Money/month', val: tk(avg(tot_send)),     color: '#f59e0b' },
+        { label: 'Avg Received/month',   val: tk(avg(tot_receive)),  color: '#3b82f6' },
+        { label: 'Avg Payments/month',   val: tk(avg(tot_payment)),  color: '#8b5cf6' },
+        { label: 'Avg Outflow/month',    val: tk(avg(tot_out)),      color: '#ef4444' },
+        { label: 'Avg Inflow/month',     val: tk(avg(tot_in)),       color: '#10b981' },
+      ];
+      avgs.forEach(c => {
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card);border-radius:6px">'
+          + '<span style="font-size:12px;color:var(--muted)">' + c.label + '</span>'
+          + '<span style="font-weight:700;color:' + c.color + ';font-size:14px">' + c.val + '</span>'
+          + '</div>';
+      });
+      html += '</div></div>';
+
+      // Monthly breakdown table
+      if (months.length) {
+        html += '<h4 style="margin:0 0 10px;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.5px">Month-by-Month Breakdown</h4>';
+        html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+          + '<thead><tr style="background:var(--bg2)">'
+          + '<th style="padding:10px;text-align:left;border-bottom:1px solid var(--border)">Month</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#10b981">Cash In</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#ef4444">Cash Out</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#f59e0b">Send Money</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#3b82f6">Received</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#8b5cf6">Payments</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#ef4444">Total Out</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border);color:#10b981">Total In</th>'
+          + '<th style="padding:10px;text-align:right;border-bottom:1px solid var(--border)">Txns</th>'
+          + '</tr></thead><tbody>';
+        months.forEach(m => {
+          const d = monthly[m];
+          const mOut = d.cash_out + d.send_money + d.payment;
+          const mIn  = d.cash_in  + d.receive_money;
+          html += '<tr style="border-bottom:1px solid var(--border)">'
+            + '<td style="padding:9px 10px;font-weight:600">' + m + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;color:#10b981">৳' + Math.round(d.cash_in).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;color:#ef4444">৳' + Math.round(d.cash_out).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;color:#f59e0b">৳' + Math.round(d.send_money).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;color:#3b82f6">৳' + Math.round(d.receive_money).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;color:#8b5cf6">৳' + Math.round(d.payment).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;font-weight:600;color:#ef4444">৳' + Math.round(mOut).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;font-weight:600;color:#10b981">৳' + Math.round(mIn).toLocaleString() + '</td>'
+            + '<td style="padding:9px 10px;text-align:right;color:var(--muted)">' + d.txns + '</td>'
+            + '</tr>';
+        });
+        // Totals row
+        html += '<tr style="background:rgba(99,102,241,.08);font-weight:700">'
+          + '<td style="padding:10px">TOTAL</td>'
+          + '<td style="padding:10px;text-align:right;color:#10b981">৳' + Math.round(tot_cash_in).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right;color:#ef4444">৳' + Math.round(tot_cash_out).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right;color:#f59e0b">৳' + Math.round(tot_send).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right;color:#3b82f6">৳' + Math.round(tot_receive).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right;color:#8b5cf6">৳' + Math.round(tot_payment).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right;color:#ef4444">৳' + Math.round(tot_out).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right;color:#10b981">৳' + Math.round(tot_in).toLocaleString() + '</td>'
+          + '<td style="padding:10px;text-align:right">' + data.length + '</td>'
+          + '</tr>';
+        html += '</tbody></table></div>';
+      }
+
+      document.getElementById('mfs-analysis-content').innerHTML = html;
+      document.getElementById('mfs-analysis-panel').style.display = 'block';
+      document.getElementById('mfs-analysis-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     async function loadTelecomUsage() {
