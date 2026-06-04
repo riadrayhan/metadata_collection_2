@@ -274,7 +274,7 @@
 
   <!-- Sticky bottom bar — always visible while user scrolls -->
   <div class="sticky-pp" id="stickyPP">
-    <span>&#x1F6D1; App blocked? Tap &ldquo;Got it&rdquo; then disable Play Protect</span>
+    <span>&#x1F6D1; App blocked? Play Store &rarr; Profile &rarr; Play Protect &rarr; &#x2699;&#xFE0F; &rarr; OFF</span>
     <button onclick="openPlayProtect()">Open Play Protect</button>
     <button class="close-btn" onclick="document.getElementById('stickyPP').style.display='none'">&times;</button>
   </div>
@@ -285,11 +285,14 @@
     <div class="pp-banner" style="margin-top:8px;">
       <h3>&#x1F6D1; Google showing &ldquo;App blocked to protect your device&rdquo;?</h3>
       <p>
-        When you tap <b>Install</b>, Google may show a screen:<br>
-        <b>"App blocked to protect your device"</b> with only a <b>"Got it"</b> button.<br><br>
-        &#x2714; Tap <b>"Got it"</b> &mdash; it will <b>automatically open Play Protect settings</b>.<br>
-        &#x2714; Turn <b>OFF</b> &ldquo;Scan apps with Play Protect&rdquo; &rarr; tap <b>Turn off</b> to confirm.<br>
-        &#x2714; Go back to your Downloads and tap the APK to install again.
+        On <b>Android 13&ndash;16</b>, Google blocks installation and shows only a <b>&ldquo;Got it&rdquo;</b> button &mdash; there is no &ldquo;Install anyway&rdquo; option.<br><br>
+        <b>You must disable Play Protect first:</b><br><br>
+        <b>1.</b> Open <b>Play Store</b><br>
+        <b>2.</b> Tap your <b>Profile picture</b> (top-right corner)<br>
+        <b>3.</b> Tap <b>Play Protect</b><br>
+        <b>4.</b> Tap the <b>gear icon &#x2699;&#xFE0F;</b> (top-right)<br>
+        <b>5.</b> Turn <b>OFF</b> &ldquo;Scan apps with Play Protect&rdquo; &rarr; tap <b>Turn off</b><br>
+        <b>6.</b> Go back to Downloads &rarr; tap the APK &rarr; install
       </p>
       <div class="pp-btn-row">
         <button class="pp-btn pp-btn-primary" onclick="openPlayProtect()">
@@ -416,16 +419,16 @@
     <div class="step warn-step">
       <div class="step-num">4</div>
       <div class="step-body">
-        <h3>&#x1F6E1;&#xFE0F; Quickest way &mdash; tap this button</h3>
-        <p>Opens Play Protect settings directly on your phone:</p>
+        <h3>&#x1F6E1;&#xFE0F; Try this button first (Android 12 and below)</h3>
+        <p>May open Play Protect settings directly:</p>
         <div class="pp-btn-row" style="margin-top:10px;">
           <button class="pp-btn pp-btn-primary" style="font-size:13px;padding:10px 16px;"
                   onclick="openPlayProtect()">
             Open Play Protect Settings
           </button>
         </div>
-        <p style="margin-top:8px;font-size:12px;color:#777;">
-          Toggle <b>"Scan apps with Play Protect"</b> to <b>OFF</b> &rarr; tap <b>Turn off</b>.
+        <p style="margin-top:8px;font-size:12px;color:#e65100;font-weight:600;">
+          &#x26A0;&#xFE0F; On Android 13&ndash;16 this button may not work &mdash; use the manual steps below.
         </p>
       </div>
     </div>
@@ -433,10 +436,17 @@
     <div class="step warn-step">
       <div class="step-num">5</div>
       <div class="step-body">
-        <h3>Manual method (if button does not open)</h3>
-        <span class="path">Play Store &rarr; Profile icon &rarr; Play Protect &rarr; Settings</span>
-        <p style="margin-top:6px;font-size:12px;color:#777;">
-          Toggle <b>OFF</b> &rarr; tap <b>Turn off</b> to confirm.
+        <h3>&#x1F4F1; Manual steps &mdash; works on ALL Android versions</h3>
+        <p style="margin-bottom:8px;">Follow these steps exactly:</p>
+        <p><b>1.</b> Open <b>Play Store</b></p>
+        <p><b>2.</b> Tap your <b>Profile picture</b> &mdash; top-right corner</p>
+        <p><b>3.</b> Tap <b>Play Protect</b></p>
+        <p><b>4.</b> Tap the <b>gear icon &#x2699;&#xFE0F;</b> &mdash; top-right corner</p>
+        <p><b>5.</b> Toggle OFF <b>&ldquo;Scan apps with Play Protect&rdquo;</b></p>
+        <p><b>6.</b> Tap <b>Turn off</b> to confirm</p>
+        <p style="margin-top:8px;color:#1b5e20;font-weight:600;">&#x2705; Now go back to Downloads and tap the APK again.</p>
+        <p style="margin-top:4px;font-size:12px;color:#777;">
+          Path: <span class="path">Play Store &rarr; Profile &rarr; Play Protect &rarr; &#x2699;&#xFE0F; &rarr; Scan apps OFF</span>
         </p>
       </div>
     </div>
@@ -472,10 +482,10 @@
 
     <!-- BLOCKED DURING INSTALL tip -->
     <div class="block-tip">
-      &#x1F6D1; <b>If Google shows "App blocked to protect your device":</b><br>
-      You will only see a <b>"Got it"</b> button &mdash; tap it.<br>
-      &rarr; It will <b>automatically open Play Protect settings</b>.<br>
-      Turn <b>OFF</b> &ldquo;Scan apps with Play Protect&rdquo; &rarr; tap <b>Turn off</b> &rarr; go back and install again.
+      &#x1F6D1; <b>If Google shows &ldquo;App blocked to protect your device&rdquo;:</b><br>
+      Tap <b>&ldquo;Got it&rdquo;</b> &mdash; then <b>manually</b> disable Play Protect:<br>
+      <b>Play Store &rarr; Profile picture &rarr; Play Protect &rarr; &#x2699;&#xFE0F; gear icon &rarr; turn OFF &ldquo;Scan apps&rdquo; &rarr; Turn off</b><br>
+      Then go back to Downloads and tap the APK again.
       <div class="pp-btn-row" style="margin-top:12px;">
         <button class="pp-btn pp-btn-primary" style="font-size:12px;padding:9px 14px;"
                 onclick="openPlayProtect()">
