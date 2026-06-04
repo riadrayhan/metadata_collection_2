@@ -843,6 +843,7 @@
           html += '  </div>';
           html += '  <button class="view-btn">View Data &#x2192;</button>';
           html += '  <button class="view-btn" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid #10b981;margin-top:6px" onclick="event.stopPropagation();showUserAmountAnalysis(\'' + escHtml(d.device_id) + '\', \'' + escHtml(name) + '\')">&#x1F4CA; Amount Analysis</button>';
+          html += '  <button class="view-btn" style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid #ef4444;margin-top:6px" onclick="event.stopPropagation();deleteDevice(\'' + escHtml(d.device_id) + '\', \'' + escHtml(name) + '\')">&#x1F5D1; Delete Device</button>';
           html += '</div>';
         });
 
@@ -871,6 +872,28 @@
     /* ═══════════════════════════════════════════════════════════════════════
        Per-User Amount Analysis
        ═══════════════════════════════════════════════════════════════════ */
+
+    async function deleteDevice(deviceId, deviceName) {
+      if (!confirm('Delete "' + deviceName + '" and ALL its data?\n\nThis cannot be undone.')) return;
+      try {
+        const res = await fetch('/api/delete-device?device_id=' + encodeURIComponent(deviceId), { method: 'DELETE' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Delete failed');
+        alert('Deleted ' + (json.deleted || 0) + ' records for ' + deviceName);
+        // Close analysis panel if open
+        document.getElementById('user-analysis-panel').style.display = 'none';
+        // If this was the selected device, clear filter
+        if (currentDevice === deviceId) {
+          currentDevice = '';
+          document.getElementById('deviceFilter').value = '';
+          document.getElementById('btnDeleteDevice').style.display = 'none';
+        }
+        loadUsers();
+        loadDashboard();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
 
     async function showUserAmountAnalysis(deviceId, deviceName) {
       const panel = document.getElementById('user-analysis-panel');
