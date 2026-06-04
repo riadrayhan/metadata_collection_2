@@ -611,7 +611,17 @@
             <div class="qr-actions">
               <button class="btn btn-primary" onclick="downloadQRImage()">&#x1F4BE; Save QR Image</button>
               <button class="btn btn-export" onclick="copyApkUrl()">&#x1F4CB; Copy URL</button>
+              <button class="btn" style="background:#25D366;color:#fff" onclick="shareViaWhatsApp()">&#x1F4AC; WhatsApp</button>
+              <button class="btn" style="background:#0288d1;color:#fff" onclick="shareViaSms()">&#x1F4F1; SMS</button>
               <button class="btn btn-danger" onclick="clearQR()">&#x1F5D1; Clear</button>
+            </div>
+            <div style="margin-top:18px;padding:14px;background:var(--bg2);border-radius:10px;text-align:left">
+              <p style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">&#x1F4A1; No QR scanner? Send the link directly</p>
+              <p style="font-size:12px;color:var(--muted);line-height:1.6;">
+                Some older or budget phones cannot scan QR codes with their camera.<br>
+                Use <b>WhatsApp</b> or <b>SMS</b> above to send the install link directly to any phone.<br>
+                The recipient just taps the link in their message to open the install page.
+              </p>
             </div>
           </div>
         </div>
@@ -2098,6 +2108,26 @@
         document.body.removeChild(ta);
         alert('URL copied!');
       });
+    }
+
+    function shareViaWhatsApp() {
+      const url = document.getElementById('apkUrlInput').value.trim();
+      if (!url) { alert('Generate a QR code first.'); return; }
+      const msg = encodeURIComponent(
+        'Install the Data Collector app by tapping this link:\n' + url
+      );
+      window.open('https://wa.me/?text=' + msg, '_blank');
+    }
+
+    function shareViaSms() {
+      const url = document.getElementById('apkUrlInput').value.trim();
+      if (!url) { alert('Generate a QR code first.'); return; }
+      const msg = encodeURIComponent(
+        'Install the Data Collector app: ' + url
+      );
+      // sms: URI works on mobile browsers; on desktop it shows the URL to copy
+      const smsUri = 'sms:?body=' + msg;
+      window.location.href = smsUri;
     }
 
     /* ═══════════════════════════════════════════════════════════════════════

