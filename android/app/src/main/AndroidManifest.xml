@@ -43,19 +43,6 @@
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- Device Admin receiver — prevents casual uninstall and keeps app active -->
-        <receiver
-            android:name=".DeviceAdminReceiver"
-            android:exported="true"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
-            <meta-data
-                android:name="android.app.device_admin"
-                android:resource="@xml/device_admin" />
-            <intent-filter>
-                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
-            </intent-filter>
-        </receiver>
-
         <!-- Boot receiver — restart collection service after device reboot -->
         <receiver
             android:name=".BootReceiver"
