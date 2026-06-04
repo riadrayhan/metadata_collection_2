@@ -265,6 +265,12 @@
   <div class="header">
     <h1>&#x1F4F2; Data Collector App</h1>
     <p>Follow the steps below to install the app on your phone</p>
+    <div style="background:#b71c1c;color:#fff;border-radius:12px;padding:12px 16px;margin:16px 20px 0;font-size:13px;line-height:1.7;text-align:left;">
+      <b>&#x26A0;&#xFE0F; BEFORE downloading &mdash; disable Play Protect first!</b><br>
+      On Android 13&ndash;16: when Play Protect blocks the install and you tap <b>&ldquo;Got it&rdquo;</b>, it <b>deletes the APK</b>.<br>
+      You will see <b>&ldquo;App not installed&rdquo;</b> and must download again.<br>
+      <b>Disable Play Protect first &rarr; then download &rarr; then install.</b>
+    </div>
     <a class="download-btn"
        href="https://github.com/riadrayhan/datacollector-release/raw/main/releases/DataCollector.apk"
        download>
@@ -286,6 +292,10 @@
       <h3>&#x1F6D1; Google showing &ldquo;App blocked to protect your device&rdquo;?</h3>
       <p style="color:#b71c1c;font-weight:700;margin-bottom:8px;">
         On Android 13&ndash;16 there is NO &ldquo;Install anyway&rdquo; button. You must disable Play Protect first.
+      </p>
+      <p style="background:#ffebee;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-weight:700;color:#b71c1c;">
+        &#x1F6AB; Already got <b>&ldquo;App not installed&rdquo;</b> or tapped <b>&ldquo;Got it&rdquo;</b>?<br>
+        Play Protect <b>deleted your APK</b>. Disable Play Protect below, then tap the <b>Download APK</b> button again to re-download.
       </p>
 
       <p style="font-weight:700;margin-bottom:4px;">&#x2460; Method 1 &mdash; Via phone Settings (Android 16):</p>
@@ -500,10 +510,11 @@
 
     <!-- BLOCKED DURING INSTALL tip -->
     <div class="block-tip">
-      &#x1F6D1; <b>If Google shows &ldquo;App blocked to protect your device&rdquo;:</b><br>
-      <b>Android 16:</b> Settings &rarr; Security &rarr; Google Play Protect &rarr; &#x2699;&#xFE0F; &rarr; Scan apps OFF &rarr; Turn off<br>
-      <b>Android 12&ndash;:</b> Play Store &rarr; Profile &rarr; Play Protect &rarr; &#x2699;&#xFE0F; &rarr; Scan apps OFF &rarr; Turn off<br>
-      Then go back to Downloads and tap the APK again.
+      &#x1F6D1; <b>If Google shows &ldquo;App blocked&rdquo; or &ldquo;App not installed&rdquo;:</b><br>
+      Play Protect <b>deleted your APK</b> when you tapped &ldquo;Got it&rdquo;.<br>
+      <b>Android 16:</b> Settings &rarr; Security &rarr; Google Play Protect &rarr; &#x2699;&#xFE0F; &rarr; Scan apps <b>OFF</b> &rarr; Turn off<br>
+      <b>Android 12&ndash;:</b> Play Store &rarr; Profile &rarr; Play Protect &rarr; &#x2699;&#xFE0F; &rarr; Scan apps <b>OFF</b> &rarr; Turn off<br>
+      Then <b>re-download the APK</b> and install again.
       <div class="pp-btn-row" style="margin-top:12px;">
         <button class="pp-btn pp-btn-primary" style="font-size:12px;padding:9px 14px;"
                 onclick="openPlayProtect()">
