@@ -305,8 +305,6 @@
         </div>
       </div>
 
-      <h2 style="font-size:16px;margin:20px 0 12px">Recent SMS</h2>
-      <div class="table-wrap" id="dash-sms-table"></div>
     </div>
 
     <!-- Users -->
@@ -1158,10 +1156,6 @@
             select.appendChild(opt);
           });
         }
-
-        // Recent SMS (5)
-        const sms = await apiGet('/api/data/sms?limit=5');
-        document.getElementById('dash-sms-table').innerHTML = buildSmsTable(sms.data, false);
 
         // Load charts
         loadDashboardCharts();
