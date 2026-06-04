@@ -53,6 +53,8 @@
     .sidebar .bottom label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 6px; }
     .sidebar .bottom .active-user-badge { margin-top: 8px; padding: 6px 10px; background: rgba(99,102,241,.15); border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; color: var(--accent-l); display: none; cursor: pointer; text-align: center; }
     .sidebar .bottom .active-user-badge:hover { background: rgba(99,102,241,.25); }
+    .btn-delete-device { margin-top: 8px; width: 100%; padding: 7px; background: rgba(239,68,68,.12); color: var(--red); border: 1px solid var(--red); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; display: none; }
+    .btn-delete-device:hover { background: rgba(239,68,68,.28); }
 
     /* ── User Cards ───────────────────────── */
     .user-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 28px; }
@@ -248,6 +250,7 @@
           <option value="">All Devices</option>
         </select>
       </div>
+      <button class="btn-delete-device" id="btnDeleteDevice" onclick="deleteCurrentDevice()">&#x1F5D1; Delete This Device</button>
       <div class="active-user-badge" id="activeUserBadge" onclick="clearUserFilter()" title="Click to clear filter">
         &#x1F464; <span id="activeUserLabel"></span> ✕
       </div>
@@ -690,8 +693,36 @@
 
     function onDeviceFilterChange() {
       currentDevice = document.getElementById('deviceFilter').value;
+      document.getElementById('btnDeleteDevice').style.display = currentDevice ? 'block' : 'none';
       updateActiveUserBadge();
       refreshAll();
+    }
+
+    async function deleteCurrentDevice() {
+      if (!currentDevice) return;
+      const sel = document.getElementById('deviceFilter');
+      const label = sel.options[sel.selectedIndex]?.textContent || currentDevice;
+      if (!confirm('Delete ALL data for:\n' + label + '\n\nThis cannot be undone.')) return;
+
+      const btn = document.getElementById('btnDeleteDevice');
+      btn.disabled = true;
+      btn.textContent = 'Deleting…';
+      try {
+        const res = await fetch(API + '/api/delete-device?device_id=' + encodeURIComponent(currentDevice), { method: 'DELETE' });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Delete failed');
+        // Reset filter and refresh
+        currentDevice = '';
+        document.getElementById('deviceFilter').value = '';
+        btn.style.display = 'none';
+        updateActiveUserBadge();
+        refreshAll();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🗑 Delete This Device';
+      }
     }
 
     function selectUser(deviceId) {

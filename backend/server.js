@@ -303,6 +303,22 @@ app.delete('/api/delete', async (req, res) => {
   }
 });
 
+// ─── Delete All Data for a Device ─────────────────────────────────────────
+
+app.delete('/api/delete-device', async (req, res) => {
+  try {
+    const { device_id } = req.query;
+    if (!device_id) return res.status(400).json({ error: 'Missing device_id' });
+    let totalDeleted = 0;
+    for (const type of VALID_TYPES) {
+      totalDeleted += await deleteRecords(type, { device_id });
+    }
+    res.json({ success: true, deleted: totalDeleted });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Server-Side SMS Analyzer ──────────────────────────────────────────────
 
 const AMOUNT_RE = /(?:Tk\.?|BDT|Taka)\s*[:\.]?\s*([\d,]+\.?\d*)/i;
